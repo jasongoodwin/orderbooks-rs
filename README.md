@@ -3,14 +3,26 @@ Streams order book information from multiple exchanges to get bids/asks across e
 
 MIT licenced so feel free to use. Document contains some notes on possible uses, lookouts, and has some extra info in the appendix you may want to look at.
 
-# Setup
-Not much setup is needed. You'll need rust/cargo installed.
+You'll need rust/cargo installed.
+This version was built and tested w/ rust 1.56.
+The Cargo.lock file is included - it should just work.
+A Makefile is provided which has common targets.
 
-# Running
+# Setup
+Not much setup is needed to run, however you can check the Settings.toml file.
+
+## Collecting Metrics
+Metrics are exposed for a prometheus scraper at `0.0.0.0:9000`
+
+## Running
 `make run` or `cargo run` will start the application.
 
-# Testing
+## Testing
 `make test` or `cargo test` will execute the test suite.
+
+## Log Level
+You can adjust the log level with the RUST_LOG env variable. eg for debug:
+`RUST_LOG="info,orderbooks-rs=debug"`
 
 # Design Notes
 
@@ -27,6 +39,17 @@ The major look-out if you're using order book data are predatory strategies that
 **Order Fading**, for example, is a strategy where a predatory agent will submit and partially cancel orders in a short period of time to attempt to front run movement. This can dry up liquidity and cause the price to move in the span of the attack.
 
 **Layering** is a similar strategy, with the difference being that the agent doesn't actually intend to fill orders, but only to incite other participants to detect and start to trade the price in a favorable direction.  
+
+# Contributing
+CI is pending - it's expected you format, test and lint any contributions.
+Please ensure there are no clippy `errors` or compiler warnings.
+Feel free to provide a PR.
+
+## Linting
+`make lint` or `cargo clippy` will lint the application.
+
+## Formatting
+`make fmt` or `cargo fmt` will format the code.
 
 # Appendix/References
 "101 Formulaic Alphas." Contains 101 confirmed formulaic alpha factors that can be derived from OCHLV data.
