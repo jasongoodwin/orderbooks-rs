@@ -4,36 +4,33 @@
 //! The application is separated into modules for major functionality.
 //! See the Settings.toml file for configuration.
 
-use log::LevelFilter;
-use std::collections::HashMap;
+// use log::LevelFilter;
 
+// use std::collections::HashMap;
+#[macro_use]
+extern crate log;
+mod app_config;
 mod metrics;
+mod result;
 
-fn main() {
-    let settings: config::Config = config::Config::builder()
-        // Add in `./Settings.toml`
-        .add_source(config::File::with_name("Settings"))
-        .build()
-        .expect("couldn't read Settings...");
+#[tokio::main]
+async fn main() {
+    env_logger::init();
+
+    let conf = app_config::AppConfig::new().expect("couldn't read Settings...");
+
+    // let pairs: Vec<String> = conf.
+
+    info!(
+        "Starting app with configured pairs: {:?}",
+        conf.spot_pairs()
+    );
+    info!("feel free to adjust trading pairs in [Settings.toml]!");
 
     metrics::register_all();
 
+    // let exchanges: Vec<String> = settings.get("exchanges").expect("error in exchange config...");
+    // info!("starting all stream inputs for pairs on exchanges: {:?}", exchanges);
+
     loop {}
-
-    //
-    // let log_level = if settings.get::<bool>("debug")
-    //     .expect("no log level in Settings found...")
-    //     == true {
-    //     LevelFilter::Info;
-    // } else {
-    //     LevelFilter::Info;
-    // }
-
-    // Print out our settings (as a HashMap)
-    // println!(
-    //     "{:?}",
-    //
-    // );
-    //
-    // println!("Hello, world!");
 }

@@ -8,9 +8,13 @@ license-file = "LICENSE"
 rust-version = "1.56"
 edition = "2021"
 
+[build-dependencies]
+tonic-build = "0.8"
+
 [dependencies]
 config = "0.13.2"
 env_logger = "0.9.3"
 log = "0.4.17"
 metrics = "0.20.1"
 metrics-exporter-prometheus = "0.11.0"
+tokio = { version = "1", features = ["full"] } # TODO the features included should be reduced!

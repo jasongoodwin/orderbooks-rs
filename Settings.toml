@@ -1,3 +1,31 @@
-debug = true
-priority = 32
-key = "189rjfadoisfj8923fjio"
+[spot]
+pairs = ["BTCUSDT", "ETHBTC"]
+
+[futures]
+# unsupported currently
+
+# -- EXCHANGE CONFIG --
+exchanges = ["bitget", "binance"]
+
+[bitget]
+endpoint = "wss://ws.bitstamp.net"
+subscription_message_template = """
+{
+    "event": "bts:subscribe",
+    "data": {
+        "channel": "order_book_{{pair}}}}"
+    }
+}
+"""
+
+[binance]
+endpoint = "wss://stream.binance.com:9443"
+subscription_message_template = """
+{
+  "method": "SUBSCRIBE",
+  "params": [
+    "{{pair}}@depth10@100ms"
+  ],
+  "id": 1
+}
+"""

@@ -1,0 +1,31 @@
+enabled_exchanges = ["bitstamp", "binance"]
+
+[spot]
+pairs = ["BTCUSDT", "ETHBTC"]
+
+#[futures]
+# Futures unsupported currently. Needs a mapping of exchage->future(s) markets.
+# The underlying assets can be different and may have many markets of interest per exchange.
+
+####EXCHANGE CONFIGS####
+# note: for now, we assume each have the same kind of ws api - an endpoint and subscription message.
+# can implement specific details if/when needed.
+# subscription messages are in a mustache template w/ the spot pair described.
+[bitstamp]
+endpoint = "wss://ws.bitstamp.net"
+subscription_message_template = """{
+    "event": "bts:subscribe",
+    "data": {
+        "channel": "order_book_{{pair}}}}"
+    }
+}"""
+
+[binance]
+endpoint = "wss://stream.binance.com:9443"
+subscription_message_template = """{
+  "method": "SUBSCRIBE",
+  "params": [
+    "{{pair}}@depth10@100ms"
+  ],
+  "id": 1
+}"""

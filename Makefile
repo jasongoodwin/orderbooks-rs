@@ -1,11 +1,14 @@
 test:
-    cargo test
+	cargo test
 
 fmt:
-    cargo fmt
+	cargo fmt
 
 lint:
-    cargo clippy
+	cargo clippy
 
 build:
-    cargo build
+	cargo build
+
+run:
+	RUST_LOG=info cargo run

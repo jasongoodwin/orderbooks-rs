@@ -16,6 +16,8 @@ const RUNNING_GAUGE: &str = "running";
 // starts the prometheus exporter and registers all metrics.
 // metrics can be seen at localhost:9000
 pub fn register_all() {
+    info!("starting metrics server @ 0.0.0.0:9000");
+
     let builder = PrometheusBuilder::new();
     builder
         .install()
