@@ -12,9 +12,23 @@ edition = "2021"
 tonic-build = "0.8"
 
 [dependencies]
+async-stream = "0.2"
 config = "0.13.2"
 env_logger = "0.9.3"
+futures-core = "0.3"
+futures-util = "0.3"
 log = "0.4.17"
 metrics = "0.20.1"
 metrics-exporter-prometheus = "0.11.0"
+prost = "0.11"
 tokio = { version = "1", features = ["full"] } # TODO the features included should be reduced!
+tokio-stream = "0.1"
+tonic = "0.8"
+
+[[bin]]
+name = "client"
+path = "src/client.rs"
+
+[[bin]]
+name = "server"
+path = "src/server.rs"

@@ -1,4 +1,4 @@
 fn main() {
-    tonic_build::compile_protos("proto/order_depth.proto")
+    tonic_build::compile_protos("proto/orderbook.proto")
         .unwrap_or_else(|e| panic!("Failed to compile protos {:?}", e));
 }
