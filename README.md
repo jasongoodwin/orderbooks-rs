@@ -29,6 +29,9 @@ You can adjust the log level with the RUST_LOG env variable. eg for debug:
 `RUST_LOG="info,orderbooks-rs=debug"`
 
 # Design Notes
+Design document has information on the decisions made, gotchas, release notes etc.
+See: https://docs.google.com/document/d/1psDVXU6FtZIRYa8W-z8RewljaKUG55_zFdTU5fNDGGQ/edit?usp=sharing
+
 
 # Ideas on Algo Trading w/ Order Book Data
 I've been working on a machine-learning DRL agent somewhat akin to AlphaGo for extracting profit from markets.
