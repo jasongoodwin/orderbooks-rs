@@ -11,6 +11,7 @@ use crate::orderbook::*;
 #[macro_use]
 extern crate log;
 mod app_config;
+mod exchange;
 mod exchange_service;
 mod metrics;
 mod result;

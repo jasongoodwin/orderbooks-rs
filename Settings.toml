@@ -21,7 +21,7 @@ subscription_message_template = """{
 }"""
 
 [binance]
-endpoint = "wss://stream.binance.com:9443"
+endpoint = "wss://stream.binance.com:9443/ws"
 subscription_message_template = """{
   "method": "SUBSCRIBE",
   "params": [

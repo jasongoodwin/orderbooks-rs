@@ -13,13 +13,14 @@ const SETTINGS: &str = "Settings";
 const SETTINGS: &str = "TestSettings";
 
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) struct ExchangeConfig {
-    id: String,
-    endpoint: String,
-    subscription_message_template: String,
+pub struct ExchangeConfig {
+    pub(crate) id: String,
+    pub(crate) endpoint: String,
+    pub(crate) subscription_message_template: String,
+    pub(crate) spot_pairs: Vec<String>,
 }
 
-pub(crate) struct AppConfig {
+pub struct AppConfig {
     config: Config,
 }
 
@@ -55,10 +56,13 @@ impl AppConfig {
                 .config
                 .get::<String>(&*format!("{}.subscription_message_template", id))?;
 
+            let spot_pairs = self.spot_pairs()?;
+
             exchange_configs.push(ExchangeConfig {
                 id,
                 endpoint,
                 subscription_message_template,
+                spot_pairs,
             });
         }
 
@@ -105,6 +109,7 @@ mod tests {
     }
 }"#
             .to_string(),
+            spot_pairs: vec!["BTCUSDT".into(), "ETHBTC".into()]
         }));
 
         assert!(exchange_configs.contains(&ExchangeConfig {
@@ -118,6 +123,7 @@ mod tests {
   "id": 1
 }"#
             .to_string(),
+            spot_pairs: vec!["BTCUSDT".into(), "ETHBTC".into()]
         }));
 
         Ok(())
