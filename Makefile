@@ -10,5 +10,8 @@ lint:
 build:
 	cargo build
 
-run:
-	RUST_LOG=info cargo run
+client:
+	RUST_LOG=info cargo run --bin client
+
+server:
+	RUST_LOG=info cargo run --bin server

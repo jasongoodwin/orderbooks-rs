@@ -14,8 +14,12 @@ Not much setup is needed to run, however you can check the Settings.toml file.
 ## Collecting Metrics
 Metrics are exposed for a prometheus scraper at `0.0.0.0:9000`
 
-## Running
-`make run` or `cargo run` will start the application.
+## Running (server)
+`make server` or `RUST_LOG=info cargo run --bin server` will start the application.
+
+## Running (client)
+`make client` or `RUST_LOG=info cargo run --bin client` will start a client to demonstrate the stream works.
+It will print all updates to the console.
 
 ## Testing
 `make test` or `cargo test` will execute the test suite.
