@@ -4,11 +4,33 @@ use futures_core::Stream;
 use futures_util::StreamExt;
 use std::pin::Pin;
 use std::sync::Arc;
+use tokio::sync::watch;
+use tokio::sync::watch::*;
 use tokio::sync::mpsc;
+use tokio::sync::mpsc::Receiver;
 use tokio_stream::wrappers::ReceiverStream;
+use crate::orderbook::Summary;
 
-#[derive(Clone, Debug)]
-pub struct OrderbookAggregatorServer;
+#[derive(Debug)]
+pub struct OrderbookAggregatorServer {
+    pub(crate) watch_rx: watch::Receiver<Summary>,
+    last_summary: Summary,
+    // subscribers: Vec<Receiver<Result<Summary, tonic::Status>>>
+}
+
+impl OrderbookAggregatorServer {
+    pub fn new(watch_rx: watch::Receiver<Summary>) -> OrderbookAggregatorServer {
+        OrderbookAggregatorServer {
+            watch_rx,
+            last_summary: Summary{
+                spread: 0.0,
+                bids: vec![],
+                asks: vec![]
+            },
+            // subscribers: vec![]
+        }
+    }
+}
 
 type SummaryStream = Pin<Box<dyn Stream<Item = Result<Summary, tonic::Status>> + Send + 'static>>;
 
@@ -23,38 +45,17 @@ impl OrderbookAggregator for OrderbookAggregatorServer {
         println!("book summary");
         let (mut tx, rx) = mpsc::channel(4);
 
-        //
-        // let output = async_stream::try_stream! {
-        //     // let asks = Level {
-        //     //     exchange: "yo".into(),
-        //     //     amount: vec![],
-        //     //     price: vec![],
-        //     // };
-        //     println!("here");
-        //     loop {
-        //         println!("in stream");
-        //         tx.send(Ok(Summary {
-        //         asks: vec![],
-        //         bids: vec![],
-        //         spread: 0.0,
-        //     })).await.unwrap();
-        //
-        //     }
-        // };
-
-        let txr = Arc::new(tx.clone());
+        let mut wrx: tokio::sync::watch::Receiver<Summary> = self.watch_rx.clone();
 
         tokio::spawn(async move {
             loop {
-                println!("sending");
-                txr.clone()
-                    .send(Ok(Summary {
-                        asks: vec![],
-                        bids: vec![],
-                        spread: 0.0,
-                    }))
-                    .await
-                    .unwrap();
+                // println!("looping");
+                // println!("looping {:?}", wrx.borrow().spread);
+                wrx.changed().await.unwrap(); // FIXME unsafe result.
+
+                let val = wrx.borrow().clone();
+                tx.send(Ok(val)).await; // FIXME move await. also unused result.
+
             }
         });
 

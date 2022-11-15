@@ -3,6 +3,7 @@ use std::io::Error;
 use std::result;
 use tokio::sync::mpsc;
 
+#[derive(Debug, Default, PartialEq)]
 pub struct OrderBookData {
     timestamp_ms: u64,
     bids: Vec<f32>,
@@ -11,7 +12,7 @@ pub struct OrderBookData {
 
 fn spawn_new(
     exchange_config: ExchangeConfig,
-    subscribers_rx: mpsc::Receiver<OrderBookData>,
+    subscribers_tx: mpsc::Sender<OrderBookData>,
 ) -> crate::result::Result<()> {
     let exchange: Box<dyn Exchange> = match exchange_config.id.as_str() {
         "binance" => Box::new(Binance {}),
@@ -25,9 +26,9 @@ fn spawn_new(
             exchange_config
         );
         loop {
-            println!("running")
+            subscribers_tx.send(OrderBookData::default()).await.expect("failed to send order book data! this will crash the thread...");
         }
-        // Process each socket concurrently.
+
     });
 
     Ok(())
@@ -50,3 +51,4 @@ impl Exchange for Bitstamp {
         todo!()
     }
 }
+

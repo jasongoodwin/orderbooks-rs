@@ -18,6 +18,7 @@ mod result;
 
 use crate::exchange_service::OrderbookAggregatorServer;
 use std::sync::Arc;
+use tokio::sync::watch;
 use tonic::transport::Server;
 
 pub mod orderbook {
@@ -44,23 +45,40 @@ async fn main() -> result::Result<()> {
     // let exchanges: Vec<String> = settings.get("exchanges").expect("error in exchange config...");
     // info!("starting all stream inputs for pairs on exchanges: {:?}", exchanges);
 
+
+    // watch is used to send messages to the server/client connections.
+    // Each client connection will observe when there is an update and then will read the most current values.
+    // Note that borrows of the value will hold a read lock so they should be very short lived.
+    // This shouldn't cause any contention, but may need to revisit the use of channels
+    // Optimization: use eg Arc<Summary> instead of Summary for the channels to prevent cloning of the Summary per client.
+    let (watch_tx, mut watch_rx) = watch::channel(Summary {
+        spread: 0.0,
+        bids: vec![],
+        asks: vec![]
+    });
+
+    tokio::spawn(async move { // TEST LOOP! shows that you can send updates to the watch and client will get 'em.
+        let mut i = 0.0;
+        loop {
+            println!("sending update");
+            i = i + 0.1;
+            watch_tx.send(Summary {
+                spread: i,
+                bids: vec![],
+                asks: vec![]
+            }).expect("uh oh");
+            use tokio::time::{sleep, Duration};
+            sleep(Duration::from_millis(100)).await;
+        }
+        // tx.broadcast("goodbye").unwrap();
+    });
+
     let addr = "[::1]:10000".parse().unwrap();
-
-    let route_guide = exchange_service::OrderbookAggregatorServer {
-        // features: Arc::new(data::load()),
-    };
-
+    let route_guide = OrderbookAggregatorServer::new(watch_rx);
     let svc =
         crate::orderbook::orderbook_aggregator_server::OrderbookAggregatorServer::new(route_guide);
-
     Server::builder().add_service(svc).serve(addr).await?;
-    // let route_guide = exchange_service::OrderbookAggregator {
-    // features: Arc::new(data::load()),
-    // };
 
-    // let svc = OrderbookAggregator::new(route_guide);
-
-    // Server::builder().add_service(svc).serve(addr).await?;
-
+    println!("GRPC Server stopped. shutting down...");
     Ok(())
 }
