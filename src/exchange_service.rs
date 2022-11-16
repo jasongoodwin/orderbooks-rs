@@ -30,6 +30,7 @@ impl OrderBookData {
     /// replaces the data from a specific exchange.
     pub fn update_exchange_data(&mut self, update: OrderBookUpdate) {
         // TODO keep only top n on insert to make summary faster to build.
+        // TODO note if there are any differences! Only want to publish if there is actually a difference to top n.
         self.exchange_data.insert(update.exchange.clone(), update);
     }
 
@@ -79,129 +80,42 @@ impl OrderBookData {
     }
 }
 
-impl Summary {
-    // merges new order book data, returning a new Summary with _ALL ORDERBOOK_DATA.
-    // Use truncate to get the actual summary.
-    // // pub fn merge(&self, mut order_book_data: OrderBookUpdate) -> Summary {
-    // //     let mut exchange = "".to_string();
-    // //
-    // //     match (order_book_data.bids.first(), order_book_data.asks.first()) {
-    // //         (Some(bid), _) => {
-    // //             exchange = bid.exchange.clone();
-    // //         }
-    // //         (_, Some(ask)) => {
-    // //             exchange = ask.exchange.clone();
-    // //         }
-    // //         _ => {
-    // //             println!("no data!");
-    // //             return self.clone()
-    // //         }, // no changes so return early
-    // //     }
-    // //
-    // //     println!("exchange: {}", exchange.clone());
-    // //
-    // //     let mut new_summary = Summary{
-    // //         spread: 0.0,
-    // //         bids: self.bids.clone()//TODO remove clone...
-    // //         .into_iter()
-    // //         .filter(|o| {
-    // //             println!("equals? {} {} {}", o.exchange.eq(&exchange), o.exchange, &exchange);
-    // //             o.exchange.eq(&exchange)
-    // //         })
-    // //         .collect(),
-    // //         asks: self.bids.clone() //TODO remove clone...
-    // //         .into_iter()
-    // //         .filter(|o| o.exchange.eq(&exchange))
-    // //         .collect()
-    // //     };
-    // //
-    // //     // todo abstract/deduplicate this logic
-    // //
-    // //     // sorts in order and takes first TOP_N. Nothing fancy.
-    // //
-    // //     // Commentary on perf:
-    // //     // - would be possible to sort the new data and merge with existing sorted summary but the benefit is small.
-    // //     // - Should be roughly O(2n*logn) for append + sort as append moves the elements efficiently.
-    // //     // - Biggest cost is probably comparing the exchange to filter old values
-    // //     new_summary.bids.append(
-    // //         &mut order_book_data.bids
-    // //     );
-    // //     new_summary.bids.sort_by(|a, b| {
-    // //         if a.price < b.price {
-    // //             Ordering::Less
-    // //         } else if a.price == b.price {
-    // //             Ordering::Equal
-    // //         } else {
-    // //             Ordering::Greater
-    // //         }
-    // //     });
-    // //
-    // //     new_summary.asks.append(&mut order_book_data.asks);
-    // //     new_summary.asks.sort_by(|a, b| {
-    // //         if a.price < b.price {
-    // //             Ordering::Less
-    // //         } else if a.price == b.price {
-    // //             Ordering::Equal
-    // //         } else {
-    // //             Ordering::Greater
-    // //         }
-    // //     });
-    // //
-    // //     // calculate the new spread based on the first bid and ask price (they're the best) o(n)
-    // //     // we check there are bids and asks or else we leave the spread
-    // //     if !new_summary.asks.is_empty() && !new_summary.bids.is_empty() {
-    // //         new_summary.spread =
-    // //             new_summary.asks.first().unwrap().price - new_summary.bids.first().unwrap().price;
-    // //     }
-    // //
-    // //     if new_summary.spread < 0.0 {
-    // //         // TODO delete.
-    // //         info!(
-    // //             "A negative spread was observed while merging new order book data from {}",
-    // //             exchange
-    // //         );
-    // //     }
-    // //
-    // //     new_summary
-    // }
-
-    // returns only TOP_N
-    // pub fn truncate_top_n(&self) -> Summary {
-    //     let mut new_summary = self.clone();
-    //     new_summary.bids.truncate(TOP_N);
-    //     new_summary.bids.truncate(TOP_N);
-    //     new_summary
-    // }
-}
-
 pub struct AggregatorProcess {
     // receives new order book data from exchanges
-    pub(crate) exchange_rx: mpsc::Receiver<OrderBookUpdate>,
+    // pub(crate) exchange_rx: mpsc::Receiver<OrderBookUpdate>,
     // sends the updated summary to a watch for clients
-    pub(crate) watch_tx: watch::Sender<Summary>,
-    last_summary: Summary,
+    // pub(crate) watch_tx: watch::Sender<Summary>,
+    // last_summary: Summary,
 }
 
 impl AggregatorProcess {
     pub async fn start(
-        exchange_rx: mpsc::Receiver<OrderBookUpdate>,
+        mut exchange_rx: mpsc::Receiver<OrderBookUpdate>,
         watch_tx: watch::Sender<Summary>,
     ) {
         tokio::spawn(async move {
-            let mut agg = AggregatorProcess {
-                exchange_rx,
-                watch_tx,
-                last_summary: Summary {
-                    spread: 0.0,
-                    bids: vec![],
-                    asks: vec![],
-                },
+            // let mut agg = AggregatorProcess {
+            // exchange_rx,
+            // watch_tx,
+            // last_summary: Summary {
+            //     spread: 0.0,
+            //     bids: vec![],
+            //     asks: vec![],
+            // },
+            // };
+
+            let mut orderbook_data = OrderBookData {
+                exchange_data: Default::default(),
             };
 
             loop {
-                match agg.exchange_rx.recv().await {
+                match exchange_rx.recv().await {
                     None => debug!("empty exchange update received on exchange channel"),
-                    Some(order_book_data) => {}
+                    Some(order_book_data) => {
+                        orderbook_data.update_exchange_data(order_book_data);
+                        let summary = orderbook_data.summary();
+                        watch_tx.send(summary).expect("un oh...");
+                    }
                 }
             }
         });

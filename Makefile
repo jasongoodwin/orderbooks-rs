@@ -14,4 +14,4 @@ client:
 	RUST_LOG=info cargo run --bin client
 
 server:
-	RUST_LOG=info cargo run --bin server
+	RUST_LOG=debug cargo run --bin server

@@ -4,21 +4,25 @@
 //! The application is separated into modules for major functionality.
 //! See the Settings.toml file for configuration.
 
+use std::fmt::format;
 // use log::LevelFilter;
 use crate::orderbook::orderbook_aggregator_server::*;
 use crate::orderbook::*;
+
 // use std::collections::HashMap;
 #[macro_use]
 extern crate log;
+
 mod app_config;
 mod exchange;
 mod exchange_service;
 mod metrics;
 mod result;
 
-use crate::exchange_service::OrderbookAggregatorServer;
+use crate::exchange::OrderBookUpdate;
+use crate::exchange_service::{AggregatorProcess, OrderbookAggregatorServer};
 use std::sync::Arc;
-use tokio::sync::watch;
+use tokio::sync::{mpsc, watch};
 use tonic::transport::Server;
 
 pub mod orderbook {
@@ -34,6 +38,9 @@ async fn main() -> result::Result<()> {
 
     let spot_pair = conf.spot_pair().unwrap();
     let enabled_exchanges = conf.enabled_exchanges().unwrap();
+    let exchange_configs = conf
+        .exchange_configs()
+        .expect("no exchange configs exist...");
 
     println!(
         "\nConfigured pair: {:?}.\nEnabled exchanges: {:?}.\n",
@@ -56,24 +63,61 @@ async fn main() -> result::Result<()> {
         asks: vec![],
     });
 
-    tokio::spawn(async move {
-        // TEST LOOP! shows that you can send updates to the watch and client will get 'em.
-        let mut i = 0.0;
-        loop {
-            println!("sending update");
-            i = i + 0.1;
-            watch_tx
-                .send(Summary {
-                    spread: i,
-                    bids: vec![],
-                    asks: vec![],
-                })
-                .expect("uh oh");
-            use tokio::time::{sleep, Duration};
-            sleep(Duration::from_millis(100)).await;
-        }
-        // tx.broadcast("goodbye").unwrap();
-    });
+    let (tx, mut rx) = mpsc::channel(32);
+
+    // Start the process that aggregates order books and supplies updates to the watch for single producer multi consumer semantics.
+    AggregatorProcess::start(rx, watch_tx).await;
+
+    for exchange in enabled_exchanges {
+        let conf = exchange_configs
+            .iter()
+            .find(|ex| ex.id == exchange)
+            .expect(&*format!(
+                "no config for configured exchange {}",
+                exchange.clone()
+            ))
+            .clone();
+
+        info!("starting exchange stream for: [{}]", exchange);
+
+        exchange::spawn_new_ws(conf.clone(), tx.clone()).await; // todo await here unnecessary
+                                                                // .expect(&*format!("couldn't start exchange stream for {:?}", conf.clone()));
+    }
+
+    //
+    // tokio::spawn(async move {
+    //
+    //     // TEST LOOP! shows that you can send updates to the watch and client will get 'em.
+    //     let mut i = 0.0;
+    //     loop {
+    //         match rx.recv().await {
+    //             None => print!("No msg?"),
+    //             Some(order_book_update) => {
+    //                 debug!("update received for watch {:?}", order_book_update); // TODO remove.
+    //                 watch_tx
+    //                     .send(Summary {
+    //                         spread: i,
+    //                         bids: vec![],
+    //                         asks: vec![],
+    //                     })
+    //                     .expect("uh oh");
+    //             }
+    //         }
+    //
+    //         // println!("sending update");
+    //         // i = i + 0.1;
+    //         // watch_tx
+    //         //     .send(Summary {
+    //         //         spread: i,
+    //         //         bids: vec![],
+    //         //         asks: vec![],
+    //         //     })
+    //         //     .expect("uh oh");
+    //         use tokio::time::{sleep, Duration};
+    //         sleep(Duration::from_millis(100)).await;
+    //     }
+    //     // tx.broadcast("goodbye").unwrap();
+    // });
 
     let addr = "[::1]:10000".parse().unwrap();
     let route_guide = OrderbookAggregatorServer::new(watch_rx);

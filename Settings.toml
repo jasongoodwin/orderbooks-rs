@@ -1,15 +1,15 @@
-enabled_exchanges = ["bitstamp", "binance"]
+enabled_exchanges = ["bitstamp"]
+#enabled_exchanges = ["bitstamp", "binance"]
 
-# TODO make the number of top bids/asks sent configurable
-
-pair = "BTCUSDT"
+# Only one pair is supported at this point.
+pair = "ETHBTC"
 
 #[spot]
 #pairs = ["BTCUSDT", "ETHBTC"]
 
 #[futures]
-# Futures unsupported currently. Needs a mapping of exchage->future(s) markets.
-# The underlying assets can be different and may have many markets of interest per exchange.
+# Would need a mapping of exchage->future(s) market tickers
+# eg binance perp futures coin-margined (BTCPERP) vs usd-margined (BTCBUSDPERP or BTCBUSDPERP)
 
 ####EXCHANGE CONFIGS####
 # note: for now, we assume each have the same kind of ws api - an endpoint and subscription message.
@@ -20,7 +20,7 @@ endpoint = "wss://ws.bitstamp.net"
 subscription_message_template = """{
     "event": "bts:subscribe",
     "data": {
-        "channel": "order_book_{{pair}}}}"
+        "channel": "order_book_{{pair}}"
     }
 }"""
 
