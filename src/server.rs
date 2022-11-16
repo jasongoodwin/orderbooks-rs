@@ -84,41 +84,6 @@ async fn main() -> result::Result<()> {
                                                                 // .expect(&*format!("couldn't start exchange stream for {:?}", conf.clone()));
     }
 
-    //
-    // tokio::spawn(async move {
-    //
-    //     // TEST LOOP! shows that you can send updates to the watch and client will get 'em.
-    //     let mut i = 0.0;
-    //     loop {
-    //         match rx.recv().await {
-    //             None => print!("No msg?"),
-    //             Some(order_book_update) => {
-    //                 debug!("update received for watch {:?}", order_book_update); // TODO remove.
-    //                 watch_tx
-    //                     .send(Summary {
-    //                         spread: i,
-    //                         bids: vec![],
-    //                         asks: vec![],
-    //                     })
-    //                     .expect("uh oh");
-    //             }
-    //         }
-    //
-    //         // println!("sending update");
-    //         // i = i + 0.1;
-    //         // watch_tx
-    //         //     .send(Summary {
-    //         //         spread: i,
-    //         //         bids: vec![],
-    //         //         asks: vec![],
-    //         //     })
-    //         //     .expect("uh oh");
-    //         use tokio::time::{sleep, Duration};
-    //         sleep(Duration::from_millis(100)).await;
-    //     }
-    //     // tx.broadcast("goodbye").unwrap();
-    // });
-
     let addr = "[::1]:10000".parse().unwrap();
     let route_guide = OrderbookAggregatorServer::new(watch_rx);
     let svc =

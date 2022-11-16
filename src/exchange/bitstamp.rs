@@ -28,6 +28,8 @@ impl BitstampUpdate {
         let mut asks = vec![];
 
         for (price, amount) in &self.data.bids {
+            println!("bids {} {}", price, f64::from_str(&*price)?);
+            println!("bids {} {}", amount, f64::from_str(&*amount)?);
             bids.push(Level {
                 exchange: String::from(EXCHANGE_KEY),
                 price: f64::from_str(&*price)?,

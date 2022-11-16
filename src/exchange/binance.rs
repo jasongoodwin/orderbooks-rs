@@ -62,12 +62,13 @@ impl Exchange for Binance {
     //     todo!()
     // }
     fn parse_order_book_data(&self, bytes: Vec<u8>) -> Result<OrderBookUpdate> {
-        println!("update: {}", String::from_utf8(bytes).unwrap());
-        Ok(self.empty_order_book_data())
+        let parsed: BinanceUpdate = serde_json::from_slice(&bytes).unwrap();
+        parsed.to_orderbook_update()
     }
 
     fn subscribe_msg(&self) -> String {
-        let pair = self.exchange_config.spot_pair.to_uppercase();
+        // TODO identical. Move to Exchange as default impl.
+        let pair = self.exchange_config.spot_pair.to_lowercase();
         let msg = self
             .exchange_config
             .subscription_message_template

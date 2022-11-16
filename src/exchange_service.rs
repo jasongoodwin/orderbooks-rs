@@ -49,11 +49,11 @@ impl OrderBookData {
 
         bids.sort_by(|a, b| {
             if a.price < b.price {
-                Ordering::Less
+                Ordering::Greater
             } else if a.price == b.price {
                 Ordering::Equal
             } else {
-                Ordering::Greater
+                Ordering::Less
             }
         });
         bids.truncate(TOP_N);
