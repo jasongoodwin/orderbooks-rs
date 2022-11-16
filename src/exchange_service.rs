@@ -47,6 +47,7 @@ impl OrderBookData {
             asks.append(&mut ex_summary.asks.clone());
         }
 
+        // Note: bids and asks are sorted inversely from each other.
         bids.sort_by(|a, b| {
             if a.price < b.price {
                 Ordering::Greater
@@ -228,8 +229,8 @@ mod tests {
             summary.bids.first().unwrap(),
             &Level {
                 exchange: "binance".to_string(),
-                price: 4.4,
-                amount: 11.0,
+                price: 7.7,
+                amount: 9.0,
             }
         );
 
@@ -237,8 +238,8 @@ mod tests {
             summary.bids.last().unwrap(),
             &Level {
                 exchange: "binance".to_string(),
-                price: 7.7,
-                amount: 9.0,
+                price: 4.4,
+                amount: 11.0,
             }
         );
 
@@ -263,7 +264,7 @@ mod tests {
         );
 
         // top ask - top bid.
-        assert_eq!(summary.spread, 40.4 - 4.4)
+        assert_eq!(summary.spread, 40.4 - 7.7)
     }
 
     #[test]
@@ -320,21 +321,20 @@ mod tests {
             summary.bids.first().unwrap(),
             &Level {
                 exchange: "binance".to_string(),
-                price: 4.5,
-                amount: 11.0,
-            }
-        );
-
-        assert_eq!(
-            summary.bids.last().unwrap(),
-            &Level {
-                exchange: "binance".to_string(),
                 price: 7.8,
                 amount: 9.0,
             }
         );
-
+        assert_eq!(
+            summary.bids.last().unwrap(),
+            &Level {
+                exchange: "binance".to_string(),
+                price: 4.5,
+                amount: 11.0,
+            }
+        );
         assert_eq!(summary.asks.len(), 5);
+
         // top ask
         assert_eq!(
             summary.asks.first().unwrap(),
@@ -355,7 +355,7 @@ mod tests {
         );
 
         // top ask - top bid.
-        assert_eq!(summary.spread, 41.4 - 4.5)
+        assert_eq!(summary.spread, 41.4 - 7.8)
     }
 
     #[test]
@@ -411,18 +411,17 @@ mod tests {
         assert_eq!(
             summary.bids.first().unwrap(),
             &Level {
-                exchange: "binance".to_string(),
-                price: 4.4,
-                amount: 11.0,
-            }
-        );
-
-        assert_eq!(
-            summary.bids.last().unwrap(),
-            &Level {
                 exchange: "bitstamp".to_string(),
                 price: 7.8,
                 amount: 9.0,
+            }
+        );
+        assert_eq!(
+            summary.bids.last().unwrap(),
+            &Level {
+                exchange: "binance".to_string(),
+                price: 4.4,
+                amount: 11.0,
             }
         );
 
@@ -447,6 +446,6 @@ mod tests {
         );
 
         // top ask - top bid.
-        assert_eq!(summary.spread, 40.4 - 4.4)
+        assert_eq!(summary.spread, 40.4 - 7.8)
     }
 }
