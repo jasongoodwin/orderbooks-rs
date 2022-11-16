@@ -2,8 +2,10 @@ enabled_exchanges = ["bitstamp", "binance"]
 
 # TODO make the number of top bids/asks sent configurable
 
-[spot]
-pairs = ["BTCUSDT", "ETHBTC"]
+pair = "BTCUSDT"
+
+#[spot]
+#pairs = ["BTCUSDT", "ETHBTC"]
 
 #[futures]
 # Futures unsupported currently. Needs a mapping of exchage->future(s) markets.

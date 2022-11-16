@@ -1,7 +1,9 @@
 enabled_exchanges = ["bitstamp", "binance"]
 
-[spot]
-pairs = ["BTCUSDT", "ETHBTC"]
+pair = "BTCUSDT"
+
+#[spot]
+#pairs = ["BTCUSDT", "ETHBTC"]
 
 #[futures]
 # Futures unsupported currently. Needs a mapping of exchage->future(s) markets.

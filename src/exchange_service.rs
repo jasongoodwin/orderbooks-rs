@@ -2,7 +2,9 @@ use crate::orderbook::orderbook_aggregator_server::*;
 use crate::orderbook::*;
 use futures_core::Stream;
 use futures_util::StreamExt;
+use std::borrow::Borrow;
 use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::watch;
@@ -15,41 +17,36 @@ use tokio_stream::wrappers::ReceiverStream;
 use crate::orderbook::Summary;
 
 // todo make configurable
-const TOP_N: u32 = 10;
+const TOP_N: usize = 10;
 
-impl Summary {
-    // merges new order book data, returning a new Summary w/ top 10.
-    pub fn merge(&self, mut order_book_data: OrderBookUpdate) -> Summary {
-        let mut exchange = "".to_string();
+// maintains the last order book Summary for any number of exchanges.
+// This allows generation of a summary w/ top 10 bids/asks across exchanges
+struct OrderBookData {
+    // stores the last update from each exchange.
+    exchange_data: HashMap<String, OrderBookUpdate>,
+}
 
-        match (order_book_data.bids.first(), order_book_data.asks.first()) {
-            (Some(bid), _) => {
-                exchange = bid.exchange.clone();
-            }
-            (_, Some(ask)) => {
-                exchange = ask.exchange.clone();
-            }
-            _ => return self.clone(), // no changes so return early
+impl OrderBookData {
+    /// replaces the data from a specific exchange.
+    pub fn update_exchange_data(&mut self, update: OrderBookUpdate) {
+        // TODO keep only top n on insert to make summary faster to build.
+        self.exchange_data.insert(update.exchange.clone(), update);
+    }
+
+    /// summary returns a Summary containing top 10 bids/asks across all exchanges.
+    /// TODO can be made more efficient via k-way merge eg using vec like a minheap.
+    /// (For the current requirement, this will be sufficient.)
+    pub fn summary(&self) -> Summary {
+        let mut bids = vec![];
+        let mut asks = vec![];
+
+        for (_ex, ex_summary) in self.exchange_data.borrow().into_iter() {
+            // For the sake of simplicity, we clone the bids and asks. Only TOP_N are kept per exchange.
+            bids.append(&mut ex_summary.bids.clone());
+            asks.append(&mut ex_summary.asks.clone());
         }
 
-        let mut new_summary = self.clone();
-
-        // todo abstract/deduplicate this logic
-
-        // sorts in order and takes first TOP_N. Nothing fancy.
-
-        // Commentary on perf:
-        // - would be possible to sort the new data and merge with existing sorted summary but the benefit is small.
-        // - Should be roughly O(2n*logn) for append + sort as append moves the elements efficiently.
-        // - Biggest cost is probably comparing the exchange to filter old values
-        new_summary.bids.append(
-            &mut order_book_data
-                .bids
-                .into_iter()
-                .filter(|o| o.exchange.eq(&exchange))
-                .collect(),
-        );
-        new_summary.bids.sort_by(|a, b| {
+        bids.sort_by(|a, b| {
             if a.price < b.price {
                 Ordering::Less
             } else if a.price == b.price {
@@ -58,10 +55,9 @@ impl Summary {
                 Ordering::Greater
             }
         });
-        new_summary.bids.truncate(10);
+        bids.truncate(TOP_N);
 
-        new_summary.asks.append(&mut order_book_data.asks);
-        new_summary.asks.sort_by(|a, b| {
+        asks.sort_by(|a, b| {
             if a.price < b.price {
                 Ordering::Less
             } else if a.price == b.price {
@@ -70,25 +66,112 @@ impl Summary {
                 Ordering::Greater
             }
         });
-        new_summary.asks.truncate(10);
+        asks.truncate(TOP_N);
 
+        let mut spread = 0.0;
         // calculate the new spread based on the first bid and ask price (they're the best) o(n)
         // we check there are bids and asks or else we leave the spread
-        if !new_summary.asks.is_empty() && !new_summary.bids.is_empty() {
-            new_summary.spread =
-                new_summary.asks.first().unwrap().price - new_summary.bids.first().unwrap().price;
+        if !asks.is_empty() && !bids.is_empty() {
+            spread = asks.first().unwrap().price - bids.first().unwrap().price;
         }
 
-        if new_summary.spread < 0.0 {
-            // TODO delete.
-            info!(
-                "A negative spread was observed while merging new order book data from {}",
-                exchange
-            );
-        }
-
-        new_summary
+        Summary { spread, bids, asks }
     }
+}
+
+impl Summary {
+    // merges new order book data, returning a new Summary with _ALL ORDERBOOK_DATA.
+    // Use truncate to get the actual summary.
+    // // pub fn merge(&self, mut order_book_data: OrderBookUpdate) -> Summary {
+    // //     let mut exchange = "".to_string();
+    // //
+    // //     match (order_book_data.bids.first(), order_book_data.asks.first()) {
+    // //         (Some(bid), _) => {
+    // //             exchange = bid.exchange.clone();
+    // //         }
+    // //         (_, Some(ask)) => {
+    // //             exchange = ask.exchange.clone();
+    // //         }
+    // //         _ => {
+    // //             println!("no data!");
+    // //             return self.clone()
+    // //         }, // no changes so return early
+    // //     }
+    // //
+    // //     println!("exchange: {}", exchange.clone());
+    // //
+    // //     let mut new_summary = Summary{
+    // //         spread: 0.0,
+    // //         bids: self.bids.clone()//TODO remove clone...
+    // //         .into_iter()
+    // //         .filter(|o| {
+    // //             println!("equals? {} {} {}", o.exchange.eq(&exchange), o.exchange, &exchange);
+    // //             o.exchange.eq(&exchange)
+    // //         })
+    // //         .collect(),
+    // //         asks: self.bids.clone() //TODO remove clone...
+    // //         .into_iter()
+    // //         .filter(|o| o.exchange.eq(&exchange))
+    // //         .collect()
+    // //     };
+    // //
+    // //     // todo abstract/deduplicate this logic
+    // //
+    // //     // sorts in order and takes first TOP_N. Nothing fancy.
+    // //
+    // //     // Commentary on perf:
+    // //     // - would be possible to sort the new data and merge with existing sorted summary but the benefit is small.
+    // //     // - Should be roughly O(2n*logn) for append + sort as append moves the elements efficiently.
+    // //     // - Biggest cost is probably comparing the exchange to filter old values
+    // //     new_summary.bids.append(
+    // //         &mut order_book_data.bids
+    // //     );
+    // //     new_summary.bids.sort_by(|a, b| {
+    // //         if a.price < b.price {
+    // //             Ordering::Less
+    // //         } else if a.price == b.price {
+    // //             Ordering::Equal
+    // //         } else {
+    // //             Ordering::Greater
+    // //         }
+    // //     });
+    // //
+    // //     new_summary.asks.append(&mut order_book_data.asks);
+    // //     new_summary.asks.sort_by(|a, b| {
+    // //         if a.price < b.price {
+    // //             Ordering::Less
+    // //         } else if a.price == b.price {
+    // //             Ordering::Equal
+    // //         } else {
+    // //             Ordering::Greater
+    // //         }
+    // //     });
+    // //
+    // //     // calculate the new spread based on the first bid and ask price (they're the best) o(n)
+    // //     // we check there are bids and asks or else we leave the spread
+    // //     if !new_summary.asks.is_empty() && !new_summary.bids.is_empty() {
+    // //         new_summary.spread =
+    // //             new_summary.asks.first().unwrap().price - new_summary.bids.first().unwrap().price;
+    // //     }
+    // //
+    // //     if new_summary.spread < 0.0 {
+    // //         // TODO delete.
+    // //         info!(
+    // //             "A negative spread was observed while merging new order book data from {}",
+    // //             exchange
+    // //         );
+    // //     }
+    // //
+    // //     new_summary
+    // }
+
+    // returns only TOP_N
+    // pub fn truncate_top_n(&self) -> Summary {
+    //     let mut new_summary = self.clone();
+    //     new_summary.bids.truncate(TOP_N);
+    //     new_summary.bids.truncate(TOP_N);
+    //     new_summary
+    // }
 }
 
 pub struct AggregatorProcess {
@@ -199,14 +282,13 @@ mod tests {
     }
 
     #[test]
-    fn summary_should_merge_new_order_book_data_when_empty() {
-        let summary = Summary {
-            spread: 0.0,
-            bids: vec![],
-            asks: vec![],
+    fn should_add_new_order_book_data_for_unseen_exchange() {
+        let mut order_book_data = OrderBookData {
+            exchange_data: Default::default(),
         };
 
-        let order_book_data = OrderBookUpdate {
+        let order_book_update = OrderBookUpdate {
+            exchange: "binance".to_string(),
             bids: sample_levels(
                 "binance".to_string(),
                 vec![(5.5, 10.0), (4.4, 11.0), (7.7, 9.0), (6.6, 8.0)],
@@ -223,76 +305,64 @@ mod tests {
             ),
         };
 
-        let updated_summary = summary.merge(order_book_data);
+        order_book_data.update_exchange_data(order_book_update);
+        let summary = order_book_data.summary();
 
-        assert_eq!(updated_summary.bids.len(), 4);
+        assert_eq!(summary.bids.len(), 4);
         // top bid
         assert_eq!(
-            updated_summary.bids.first().unwrap(),
+            summary.bids.first().unwrap(),
             &Level {
                 exchange: "binance".to_string(),
                 price: 4.4,
-                amount: 11.0
+                amount: 11.0,
             }
         );
 
         assert_eq!(
-            updated_summary.bids.last().unwrap(),
+            summary.bids.last().unwrap(),
             &Level {
                 exchange: "binance".to_string(),
                 price: 7.7,
-                amount: 9.0
+                amount: 9.0,
             }
         );
 
-        assert_eq!(updated_summary.asks.len(), 5);
+        assert_eq!(summary.asks.len(), 5);
         // top ask
         assert_eq!(
-            updated_summary.asks.first().unwrap(),
+            summary.asks.first().unwrap(),
             &Level {
                 exchange: "binance".to_string(),
                 price: 40.4,
-                amount: 110.0
+                amount: 110.0,
             }
         );
 
         assert_eq!(
-            updated_summary.asks.last().unwrap(),
+            summary.asks.last().unwrap(),
             &Level {
                 exchange: "binance".to_string(),
                 price: 70.7,
-                amount: 90.0
+                amount: 90.0,
             }
         );
 
         // top ask - top bid.
-        assert_eq!(updated_summary.spread, 40.4 - 4.4)
+        assert_eq!(summary.spread, 40.4 - 4.4)
     }
 
     #[test]
-    fn summary_should_merge_new_order_book_data_when_non_empty() {
-        let summary = Summary {
-            spread: 0.0,
-            bids: vec![],
-            asks: vec![],
+    fn should_replace_new_order_book_data_for_previously_seen_exchange() {
+        let mut order_book_data = OrderBookData {
+            exchange_data: Default::default(),
         };
 
-        let order_book_data = OrderBookUpdate {
+        let order_book_update = OrderBookUpdate {
+            exchange: "binance".to_string(),
             bids: sample_levels(
                 "binance".to_string(),
-                vec![
-                    (5.5, 10.0),
-                    (4.4, 11.0),
-                    (4.5, 11.0),
-                    (4.6, 11.0),
-                    (4.7, 11.0),
-                    (5.7, 11.0),
-                    (6.1, 11.0),
-                    (6.2, 11.0),
-                    (5.9, 11.0),
-                    (7.8, 9.0),
-                    (6.6, 8.0),
-                ],
+                vec![(5.5, 10.0), (4.4, 11.0), (7.7, 9.0), (6.6, 8.0)],
             ),
             asks: sample_levels(
                 "binance".to_string(),
@@ -302,44 +372,21 @@ mod tests {
                     (70.7, 90.0),
                     (60.6, 80.0),
                     (55.6, 80.0),
-                    (51.5, 100.0),
-                    (41.4, 110.0),
-                    (71.7, 90.0),
-                    (61.6, 80.0),
-                    (56.6, 80.0),
                 ],
             ),
         };
 
-        let updated_summary = summary.merge(order_book_data);
+        order_book_data.update_exchange_data(order_book_update);
 
-        let order_book_data = OrderBookUpdate {
+        let order_book_update = OrderBookUpdate {
+            exchange: "binance".to_string(),
             bids: sample_levels(
-                "bitstamp".to_string(),
-                vec![
-                    (5.5, 10.0),
-                    (4.3, 11.1),
-                    (4.4, 11.0),
-                    (4.5, 11.0),
-                    (4.6, 11.0),
-                    (4.7, 11.0),
-                    (5.7, 11.0),
-                    (6.1, 11.0),
-                    (6.2, 11.0),
-                    (5.9, 11.0),
-                    (7.7, 9.0),
-                    (6.6, 8.0),
-                ],
+                "binance".to_string(),
+                vec![(5.6, 10.0), (4.5, 11.0), (7.8, 9.0), (6.7, 8.0)],
             ),
             asks: sample_levels(
-                "bitstamp".to_string(),
+                "binance".to_string(),
                 vec![
-                    (50.5, 100.0),
-                    (40.1, 110.0),
-                    (40.4, 110.0),
-                    (70.7, 90.0),
-                    (60.6, 80.0),
-                    (55.6, 80.0),
                     (51.5, 100.0),
                     (41.4, 110.0),
                     (71.7, 90.0),
@@ -349,76 +396,65 @@ mod tests {
             ),
         };
 
-        let updated_summary = updated_summary.merge(order_book_data);
+        order_book_data.update_exchange_data(order_book_update);
 
-        assert_eq!(updated_summary.bids.len(), 10);
+        let summary = order_book_data.summary();
+
+        assert_eq!(summary.bids.len(), 4);
         // top bid
         assert_eq!(
-            updated_summary.bids.first().unwrap(),
+            summary.bids.first().unwrap(),
             &Level {
-                exchange: "bitstamp".to_string(),
-                price: 4.3,
-                amount: 11.1
+                exchange: "binance".to_string(),
+                price: 4.5,
+                amount: 11.0,
             }
         );
 
         assert_eq!(
-            updated_summary.bids.last().unwrap(),
+            summary.bids.last().unwrap(),
             &Level {
                 exchange: "binance".to_string(),
-                price: 5.5,
-                amount: 10.0
+                price: 7.8,
+                amount: 9.0,
             }
         );
 
-        assert_eq!(updated_summary.asks.len(), 10);
+        assert_eq!(summary.asks.len(), 5);
         // top ask
         assert_eq!(
-            updated_summary.asks.first().unwrap(),
+            summary.asks.first().unwrap(),
             &Level {
-                exchange: "bitstamp".to_string(),
-                price: 40.1,
-                amount: 110.0
+                exchange: "binance".to_string(),
+                price: 41.4,
+                amount: 110.0,
             }
         );
 
         assert_eq!(
-            updated_summary.asks.last().unwrap(),
+            summary.asks.last().unwrap(),
             &Level {
                 exchange: "binance".to_string(),
-                price: 55.6,
-                amount: 80.0
+                price: 71.7,
+                amount: 90.0,
             }
         );
 
         // top ask - top bid.
-        assert_eq!(updated_summary.spread, 40.1 - 4.3)
+        assert_eq!(summary.spread, 41.4 - 4.5)
     }
 
     #[test]
-    fn summary_should_filter_exchange_data_when_re_adding_data() {
-        let summary = Summary {
-            spread: 0.0,
-            bids: vec![],
-            asks: vec![],
+    fn should_handle_order_book_data_for_multiple_exchanges() {
+        let mut order_book_data = OrderBookData {
+            exchange_data: Default::default(),
         };
 
-        let order_book_data = OrderBookUpdate {
+        let order_book_update = OrderBookUpdate {
+            exchange: "binance".to_string(),
             bids: sample_levels(
                 "binance".to_string(),
-                vec![
-                    (5.5, 10.0),
-                    (4.4, 11.0),
-                    (4.5, 11.0),
-                    (4.6, 11.0),
-                    (4.7, 11.0),
-                    (5.7, 11.0),
-                    (6.1, 11.0),
-                    (6.2, 11.0),
-                    (5.9, 11.0),
-                    (7.8, 9.0),
-                    (6.6, 8.0),
-                ],
+                vec![(5.5, 10.0), (4.4, 11.0), (7.7, 9.0), (6.6, 8.0)],
             ),
             asks: sample_levels(
                 "binance".to_string(),
@@ -428,44 +464,21 @@ mod tests {
                     (70.7, 90.0),
                     (60.6, 80.0),
                     (55.6, 80.0),
-                    (51.5, 100.0),
-                    (41.4, 110.0),
-                    (71.7, 90.0),
-                    (61.6, 80.0),
-                    (56.6, 80.0),
                 ],
             ),
         };
 
-        let updated_summary = summary.merge(order_book_data);
+        order_book_data.update_exchange_data(order_book_update);
 
-        let order_book_data = OrderBookUpdate {
+        let order_book_update = OrderBookUpdate {
+            exchange: "bitstamp".to_string(),
             bids: sample_levels(
                 "bitstamp".to_string(),
-                vec![
-                    (5.5, 10.0),
-                    (4.3, 11.1),
-                    (4.4, 11.0),
-                    (4.5, 11.0),
-                    (4.6, 11.0),
-                    (4.7, 11.0),
-                    (5.7, 11.0),
-                    (6.1, 11.0),
-                    (6.2, 11.0),
-                    (5.9, 11.0),
-                    (7.7, 9.0),
-                    (6.6, 8.0),
-                ],
+                vec![(5.6, 10.0), (4.5, 11.0), (7.8, 9.0), (6.7, 8.0)],
             ),
             asks: sample_levels(
                 "bitstamp".to_string(),
                 vec![
-                    (50.5, 100.0),
-                    (40.1, 110.0),
-                    (40.4, 110.0),
-                    (70.7, 90.0),
-                    (60.6, 80.0),
-                    (55.6, 80.0),
                     (51.5, 100.0),
                     (41.4, 110.0),
                     (71.7, 90.0),
@@ -475,49 +488,51 @@ mod tests {
             ),
         };
 
-        let updated_summary = updated_summary.merge(order_book_data);
+        order_book_data.update_exchange_data(order_book_update);
 
-        assert_eq!(updated_summary.bids.len(), 10);
+        let summary = order_book_data.summary();
+
+        assert_eq!(summary.bids.len(), 8);
         // top bid
         assert_eq!(
-            updated_summary.bids.first().unwrap(),
+            summary.bids.first().unwrap(),
             &Level {
-                exchange: "bitstamp".to_string(),
-                price: 4.3,
-                amount: 11.1
+                exchange: "binance".to_string(),
+                price: 4.4,
+                amount: 11.0,
             }
         );
 
         assert_eq!(
-            updated_summary.bids.last().unwrap(),
+            summary.bids.last().unwrap(),
             &Level {
-                exchange: "binance".to_string(),
-                price: 5.5,
-                amount: 10.0
+                exchange: "bitstamp".to_string(),
+                price: 7.8,
+                amount: 9.0,
             }
         );
 
-        assert_eq!(updated_summary.asks.len(), 10);
+        assert_eq!(summary.asks.len(), 10);
         // top ask
         assert_eq!(
-            updated_summary.asks.first().unwrap(),
+            summary.asks.first().unwrap(),
             &Level {
-                exchange: "bitstamp".to_string(),
-                price: 40.1,
-                amount: 110.0
+                exchange: "binance".to_string(),
+                price: 40.4,
+                amount: 110.0,
             }
         );
 
         assert_eq!(
-            updated_summary.asks.last().unwrap(),
+            summary.asks.last().unwrap(),
             &Level {
-                exchange: "binance".to_string(),
-                price: 55.6,
-                amount: 80.0
+                exchange: "bitstamp".to_string(),
+                price: 71.7,
+                amount: 90.0,
             }
         );
 
         // top ask - top bid.
-        assert_eq!(updated_summary.spread, 40.1 - 4.3)
+        assert_eq!(summary.spread, 40.4 - 4.4)
     }
 }

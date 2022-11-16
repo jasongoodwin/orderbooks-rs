@@ -6,6 +6,7 @@ use tokio::sync::mpsc;
 
 #[derive(Debug, Default, PartialEq)]
 pub struct OrderBookUpdate {
+    pub(crate) exchange: String,
     pub(crate) bids: Vec<Level>,
     pub(crate) asks: Vec<Level>,
 }

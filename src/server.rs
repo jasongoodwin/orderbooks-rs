@@ -32,12 +32,12 @@ async fn main() -> result::Result<()> {
 
     let conf = app_config::AppConfig::new().expect("couldn't read Settings...");
 
-    let spot_pairs = conf.spot_pairs().unwrap();
+    let spot_pair = conf.spot_pair().unwrap();
     let enabled_exchanges = conf.enabled_exchanges().unwrap();
 
     println!(
-        "\nConfigured pairs: {:?}.\nEnabled exchanges: {:?}.\n",
-        &spot_pairs, &enabled_exchanges
+        "\nConfigured pair: {:?}.\nEnabled exchanges: {:?}.\n",
+        &spot_pair, &enabled_exchanges
     );
 
     metrics::register_all();

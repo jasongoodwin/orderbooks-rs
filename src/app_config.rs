@@ -17,7 +17,7 @@ pub struct ExchangeConfig {
     pub(crate) id: String,
     pub(crate) endpoint: String,
     pub(crate) subscription_message_template: String,
-    pub(crate) spot_pairs: Vec<String>,
+    pub(crate) spot_pair: String,
 }
 
 pub struct AppConfig {
@@ -36,8 +36,12 @@ impl AppConfig {
     }
 
     /// returns a list of enabled spot pairs.
-    pub fn spot_pairs(&self) -> Result<Vec<String>> {
-        Ok(self.config.get("spot.pairs")?)
+    // pub fn spot_pairs(&self) -> Result<Vec<String>> {
+    //     Ok(self.config.get("spot.pairs")?)
+    // }
+
+    pub fn spot_pair(&self) -> Result<String> {
+        Ok(self.config.get("pair")?)
     }
 
     /// returns a list of enabled exchanges. They should also exist in the [exchanges] config section!
@@ -56,13 +60,13 @@ impl AppConfig {
                 .config
                 .get::<String>(&*format!("{}.subscription_message_template", id))?;
 
-            let spot_pairs = self.spot_pairs()?;
+            let spot_pair = self.spot_pair()?;
 
             exchange_configs.push(ExchangeConfig {
                 id,
                 endpoint,
                 subscription_message_template,
-                spot_pairs,
+                spot_pair,
             });
         }
 
@@ -81,13 +85,11 @@ mod tests {
     }
 
     #[test]
-    fn should_provide_spot_pairs() -> Result<()> {
+    fn should_provide_spot_pair() -> Result<()> {
         let conf = AppConfig::new()?;
-        let spot_pairs = conf.spot_pairs().unwrap();
+        let spot_pair = conf.spot_pair().unwrap();
 
-        assert_eq!(spot_pairs.len(), 2);
-        assert!(spot_pairs.contains(&"BTCUSDT".into()));
-        assert!(spot_pairs.contains(&"ETHBTC".into()));
+        assert_eq!(spot_pair, "BTCUSDT");
 
         Ok(())
     }
@@ -109,7 +111,7 @@ mod tests {
     }
 }"#
             .to_string(),
-            spot_pairs: vec!["BTCUSDT".into(), "ETHBTC".into()]
+            spot_pair: "BTCUSDT".to_string()
         }));
 
         assert!(exchange_configs.contains(&ExchangeConfig {
@@ -123,7 +125,7 @@ mod tests {
   "id": 1
 }"#
             .to_string(),
-            spot_pairs: vec!["BTCUSDT".into(), "ETHBTC".into()]
+            spot_pair: "BTCUSDT".to_string()
         }));
 
         Ok(())
