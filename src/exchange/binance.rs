@@ -1,10 +1,13 @@
+use std::str::FromStr;
+
+use async_trait::async_trait;
+
+use serde::Deserialize;
+
 use crate::app_config::ExchangeConfig;
 use crate::exchange::{Exchange, OrderBookUpdate};
 use crate::orderbook::Level;
 use crate::result::Result;
-use async_trait::async_trait;
-use serde::Deserialize;
-use std::str::FromStr;
 
 pub(crate) const EXCHANGE_KEY: &str = "binance";
 

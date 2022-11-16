@@ -1,8 +1,9 @@
+use crate::orderbook::orderbook_aggregator_client::*;
+use crate::orderbook::*;
+
 pub mod orderbook {
     tonic::include_proto!("orderbook");
 }
-use crate::orderbook::orderbook_aggregator_client::*;
-use crate::orderbook::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

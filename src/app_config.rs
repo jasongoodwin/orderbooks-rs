@@ -1,7 +1,8 @@
 //! contains an abstraction for the application configuration.
+use config::Config;
+
 // [jasongoodwin - 2022/11/10] may need to be made a bit more exchange specific as other exchanges added.
 use crate::result::Result;
-use config::Config;
 
 // toml file name/location for application config. (Settings.toml used to follow the lib's examples)
 // TODO [jasongoodwin 2022/11/10] - make this configurable (env variable or arg)
