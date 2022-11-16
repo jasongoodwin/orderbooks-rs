@@ -1,17 +1,11 @@
-use std::borrow::Borrow;
-use std::io::Error;
-use std::result;
-
 use async_trait::async_trait;
-use futures_core::Stream;
-use futures_util::{future, pin_mut, SinkExt, StreamExt};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use futures_util::{SinkExt, StreamExt};
 use tokio::sync::mpsc;
 use tokio::time::{sleep, Duration};
 use tokio_tungstenite::tungstenite::Message::Pong;
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
 
-use crate::app_config::{AppConfig, ExchangeConfig};
+use crate::app_config::ExchangeConfig;
 use crate::exchange::binance::Binance;
 use crate::exchange::bitstamp::Bitstamp;
 use crate::orderbook::Level;
@@ -32,13 +26,14 @@ pub struct OrderBookUpdate {
 // TODOs:
 // 1. validate subscription reply
 // 2. refactor to test message receipt/reply.
+// 3. If we don't get a message in x period of time, should probably close connection and re-establish.
 
 /// produces a thread to establish and manage connection/subscription to an exchange.
 pub async fn spawn_new_ws(
     exchange_config: ExchangeConfig,
     subscribers_tx: mpsc::Sender<OrderBookUpdate>,
 ) -> Result<()> {
-    // TODO no result.
+    // TODO no result type needed here.
 
     tokio::spawn(async move {
         // there are two nested loops here. If an error is encountered in the inner loop,
@@ -71,7 +66,7 @@ pub async fn spawn_new_ws(
             let (mut ws_stream, _) = connect_async(exchange_config.endpoint.clone())
                 .await
                 .expect("Failed to connect");
-            println!(
+            info!(
                 "WebSocket handshake has been successfully completed for {}",
                 exchange_config.id.as_str()
             );
@@ -82,19 +77,25 @@ pub async fn spawn_new_ws(
                 .await
                 .unwrap(); // TODO unsafe
 
+            // Get the reply message. If anything not as expected, we just continue the loop w/ a delay.
             match ws_stream.next().await {
                 None => {
-                    println!("nothing after sub?")
+                    error!("nothing after subscription!! This isn't expected! Will restart connection.");
+                    sleep(Duration::from_millis(100)).await; // wait 100ms to avoid hammering a failing endpoint.
+                    continue;
                 }
                 Some(Ok(msg)) => {
-                    println!("got subscription reply {:?}", msg.to_string())
+                    // Todo validate the subscription reply as expected. Needs to be done per exchange.
+                    info!("got subscription reply {:?}", msg.to_string())
                 }
                 Some(Err(e)) => {
                     error!(
-                        "got an error trying to subscribe to {}... {:?}",
+                        "Need to retry connection... got an error trying to subscribe to {}... {:?}",
                         exchange_config.id.as_str(),
                         e
-                    )
+                    );
+                    sleep(Duration::from_millis(100)).await; // wait 100ms to avoid hammering a failing endpoint.
+                    continue;
                 }
             }
 
@@ -112,7 +113,6 @@ pub async fn spawn_new_ws(
                     Some(Ok(msg)) => {
                         match exchange.parse_order_book_data(msg.into_data()) {
                             Ok(order_book_update) => {
-                                println!("parsed an update");
                                 // can possibly spawn this instead of awaiting, but need to ensure order.
                                 subscribers_tx.send(order_book_update).await.unwrap();
                                 // TODO unsafe unwrap
@@ -135,10 +135,6 @@ pub async fn spawn_new_ws(
                         );
                         break;
                     }
-                }
-
-                if false {
-                    break;
                 }
             }
 

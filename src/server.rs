@@ -4,26 +4,20 @@
 //! The application is separated into modules for major functionality.
 //! See the Settings.toml file for configuration.
 
-use std::fmt::format;
-// use log::LevelFilter;
-use crate::orderbook::orderbook_aggregator_server::*;
-use crate::orderbook::*;
-
-// use std::collections::HashMap;
 #[macro_use]
 extern crate log;
+
+use tokio::sync::{mpsc, watch};
+use tonic::transport::Server;
+
+use crate::exchange_service::{AggregatorProcess, OrderbookAggregatorServer};
+use crate::orderbook::*;
 
 mod app_config;
 mod exchange;
 mod exchange_service;
 mod metrics;
 mod result;
-
-use crate::exchange::OrderBookUpdate;
-use crate::exchange_service::{AggregatorProcess, OrderbookAggregatorServer};
-use std::sync::Arc;
-use tokio::sync::{mpsc, watch};
-use tonic::transport::Server;
 
 pub mod orderbook {
     tonic::include_proto!("orderbook");

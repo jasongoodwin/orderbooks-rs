@@ -1,19 +1,15 @@
-use crate::orderbook::orderbook_aggregator_server::*;
-use crate::orderbook::*;
-use futures_core::Stream;
-use futures_util::StreamExt;
 use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::pin::Pin;
-use std::sync::Arc;
-use tokio::sync::watch;
-// use tokio::sync::watch::*;
+
+use futures_core::Stream;
 use tokio::sync::mpsc;
-// use tokio::sync::mpsc::Receiver;
-use crate::exchange::OrderBookUpdate;
+use tokio::sync::watch;
 use tokio_stream::wrappers::ReceiverStream;
-// use crate::exchange::OrderBookData;
+
+use crate::exchange::OrderBookUpdate;
+use crate::orderbook::orderbook_aggregator_server::OrderbookAggregator;
 use crate::orderbook::Summary;
 
 // todo make configurable
@@ -35,7 +31,7 @@ impl OrderBookData {
     }
 
     /// summary returns a Summary containing top 10 bids/asks across all exchanges.
-    /// TODO can be made more efficient via k-way merge eg using vec like a minheap.
+    /// can be made more efficient via k-way merge eg using vec like a minheap.
     /// (For the current requirement, this will be sufficient.)
     pub fn summary(&self) -> Summary {
         let mut bids = vec![];
@@ -81,30 +77,20 @@ impl OrderBookData {
     }
 }
 
+// TODO remove empty struct, use mod.
 pub struct AggregatorProcess {
     // receives new order book data from exchanges
     // pub(crate) exchange_rx: mpsc::Receiver<OrderBookUpdate>,
     // sends the updated summary to a watch for clients
-    // pub(crate) watch_tx: watch::Sender<Summary>,
-    // last_summary: Summary,
 }
 
 impl AggregatorProcess {
+    // TODO test.
     pub async fn start(
         mut exchange_rx: mpsc::Receiver<OrderBookUpdate>,
         watch_tx: watch::Sender<Summary>,
     ) {
         tokio::spawn(async move {
-            // let mut agg = AggregatorProcess {
-            // exchange_rx,
-            // watch_tx,
-            // last_summary: Summary {
-            //     spread: 0.0,
-            //     bids: vec![],
-            //     asks: vec![],
-            // },
-            // };
-
             let mut orderbook_data = OrderBookData {
                 exchange_data: Default::default(),
             };
@@ -126,21 +112,11 @@ impl AggregatorProcess {
 #[derive(Debug)]
 pub struct OrderbookAggregatorServer {
     pub(crate) watch_rx: watch::Receiver<Summary>,
-    // last_summary: Summary,
-    // subscribers: Vec<Receiver<Result<Summary, tonic::Status>>>
 }
 
 impl OrderbookAggregatorServer {
     pub fn new(watch_rx: watch::Receiver<Summary>) -> OrderbookAggregatorServer {
-        OrderbookAggregatorServer {
-            watch_rx,
-            // last_summary: Summary{
-            //     spread: 0.0,
-            //     bids: vec![],
-            //     asks: vec![]
-            // },
-            // subscribers: vec![]
-        }
+        OrderbookAggregatorServer { watch_rx }
     }
 }
 
@@ -154,15 +130,12 @@ impl OrderbookAggregator for OrderbookAggregatorServer {
         &self,
         request: tonic::Request<crate::orderbook::Empty>,
     ) -> Result<tonic::Response<Self::BookSummaryStream>, tonic::Status> {
-        println!("book summary");
-        let (mut tx, rx) = mpsc::channel(4);
+        let (tx, rx) = mpsc::channel(4);
 
         let mut wrx: tokio::sync::watch::Receiver<Summary> = self.watch_rx.clone();
 
         tokio::spawn(async move {
             loop {
-                // println!("looping");
-                // println!("looping {:?}", wrx.borrow().spread);
                 wrx.changed().await.unwrap(); // FIXME unsafe result.
 
                 let val = wrx.borrow().clone();
@@ -176,7 +149,8 @@ impl OrderbookAggregator for OrderbookAggregatorServer {
 
 #[cfg(test)]
 mod tests {
-    // use crate::app_config::AppConfig;
+    use crate::orderbook::Level;
+
     use super::*;
 
     // test helper to take pairs of (price, amount) and return vector of levels.

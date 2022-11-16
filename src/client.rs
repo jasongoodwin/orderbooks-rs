@@ -12,11 +12,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?
         .into_inner();
 
-    println!("here");
-
     while let Some(feature) = stream.message().await? {
-        println!("got it");
-        println!("NOTE = {:?}", feature);
+        println!("{:?}", feature);
     }
 
     Ok(())

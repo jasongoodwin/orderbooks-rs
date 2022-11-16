@@ -3,8 +3,7 @@ use crate::exchange::{Exchange, OrderBookUpdate};
 use crate::orderbook::Level;
 use crate::result::Result;
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
-use serde_json::Result as JsonResult;
+use serde::Deserialize;
 use std::str::FromStr;
 
 pub(crate) const EXCHANGE_KEY: &str = "binance";
@@ -51,19 +50,17 @@ pub struct Binance {
 
 #[async_trait]
 impl Exchange for Binance {
+    fn parse_order_book_data(&self, bytes: Vec<u8>) -> Result<OrderBookUpdate> {
+        let parsed: BinanceUpdate = serde_json::from_slice(&bytes).unwrap();
+        parsed.to_orderbook_update()
+    }
+
     fn empty_order_book_data(&self) -> OrderBookUpdate {
         OrderBookUpdate {
             exchange: self.exchange_config.id.to_string(),
             bids: vec![],
             asks: vec![],
         }
-    }
-    // async fn get_order_book_data(&self) -> Result<Vec<u8>> {
-    //     todo!()
-    // }
-    fn parse_order_book_data(&self, bytes: Vec<u8>) -> Result<OrderBookUpdate> {
-        let parsed: BinanceUpdate = serde_json::from_slice(&bytes).unwrap();
-        parsed.to_orderbook_update()
     }
 
     fn subscribe_msg(&self) -> String {
@@ -73,7 +70,7 @@ impl Exchange for Binance {
             .exchange_config
             .subscription_message_template
             .replace("{{pair}}", &pair);
-        println!("sub message {}", msg.clone());
+        info!("sub message {}", msg.clone());
         msg
     }
 }

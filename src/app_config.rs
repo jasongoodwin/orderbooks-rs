@@ -1,5 +1,5 @@
 //! contains an abstraction for the application configuration.
-// [jasongoodwin - 2022/11/10] may need to be made a bit more exchange specific.
+// [jasongoodwin - 2022/11/10] may need to be made a bit more exchange specific as other exchanges added.
 use crate::result::Result;
 use config::Config;
 
@@ -27,18 +27,13 @@ pub struct AppConfig {
 impl AppConfig {
     /// returns a new app config holding the settings. (note the file is dynamically read currently...)
     pub fn new() -> Result<AppConfig> {
-        println!("Using config file: {}.toml", SETTINGS);
+        info!("Using config file: {}.toml", SETTINGS);
         let config: Config = Config::builder()
             .add_source(config::File::with_name(SETTINGS))
             .build()?;
 
         Ok(AppConfig { config })
     }
-
-    /// returns a list of enabled spot pairs.
-    // pub fn spot_pairs(&self) -> Result<Vec<String>> {
-    //     Ok(self.config.get("spot.pairs")?)
-    // }
 
     pub fn spot_pair(&self) -> Result<String> {
         Ok(self.config.get("pair")?)
@@ -76,7 +71,6 @@ impl AppConfig {
 
 #[cfg(test)]
 mod tests {
-    // use crate::app_config::AppConfig;
     use super::*;
 
     #[test]
@@ -99,7 +93,6 @@ mod tests {
         let conf = AppConfig::new()?;
         let exchange_configs = conf.exchange_configs().unwrap();
 
-        println!("{:?}", exchange_configs.get(1).unwrap());
         assert_eq!(exchange_configs.len(), 2);
         assert!(exchange_configs.contains(&ExchangeConfig {
             id: "bitstamp".to_string(),

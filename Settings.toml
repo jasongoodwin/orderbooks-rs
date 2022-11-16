@@ -1,4 +1,3 @@
-#enabled_exchanges = ["bitstamp"]
 enabled_exchanges = ["bitstamp", "binance"]
 
 # Only one pair is supported at this point.

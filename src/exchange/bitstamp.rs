@@ -3,9 +3,7 @@ use crate::exchange::{Exchange, OrderBookUpdate};
 use crate::orderbook::Level;
 use crate::result::Result;
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
-use serde_json::Result as JsonResult;
-use std::borrow::Borrow;
+use serde::Deserialize;
 use std::str::FromStr;
 
 pub(crate) const EXCHANGE_KEY: &str = "bitstamp";
@@ -28,8 +26,6 @@ impl BitstampUpdate {
         let mut asks = vec![];
 
         for (price, amount) in &self.data.bids {
-            println!("bids {} {}", price, f64::from_str(&*price)?);
-            println!("bids {} {}", amount, f64::from_str(&*amount)?);
             bids.push(Level {
                 exchange: String::from(EXCHANGE_KEY),
                 price: f64::from_str(&*price)?,
@@ -60,22 +56,17 @@ pub struct Bitstamp {
 
 #[async_trait]
 impl Exchange for Bitstamp {
+    fn parse_order_book_data(&self, bytes: Vec<u8>) -> Result<OrderBookUpdate> {
+        let parsed: BitstampUpdate = serde_json::from_slice(&bytes).unwrap();
+        parsed.to_orderbook_update()
+    }
+
     fn empty_order_book_data(&self) -> OrderBookUpdate {
         OrderBookUpdate {
             exchange: self.exchange_config.id.to_string(),
             bids: vec![],
             asks: vec![],
         }
-    }
-    // async fn get_order_book_data(&self) -> Result<Vec<u8>> {
-    //     todo!()
-    // }
-
-    fn parse_order_book_data(&self, bytes: Vec<u8>) -> Result<OrderBookUpdate> {
-        let parsed: BitstampUpdate = serde_json::from_slice(&bytes).unwrap();
-        parsed.to_orderbook_update()
-        // println!("update: {}", String::from_utf8(bytes).unwrap());
-        // Ok(self.empty_order_book_data())
     }
 
     fn subscribe_msg(&self) -> String {
@@ -84,14 +75,13 @@ impl Exchange for Bitstamp {
             .exchange_config
             .subscription_message_template
             .replace("{{pair}}", &pair);
-        println!("sub message {}", msg.clone());
+        info!("sub message {}", msg.clone());
         msg
     }
 }
 
 #[cfg(test)]
 mod tests {
-    // use crate::app_config::AppConfig;
     use super::*;
 
     #[test]
@@ -159,7 +149,5 @@ mod tests {
                 ],
             }
         );
-
-        println!("{:?}", orderbook_update);
     }
 }
