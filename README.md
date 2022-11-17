@@ -11,6 +11,10 @@ A Makefile is provided which has common targets.
 # Setup
 Not much setup is needed to run, however you can check the Settings.toml file.
 
+## Building Release
+`make build` will build a runnable release into `target/release`.
+A `Settings.toml` file is included.
+
 ## Collecting Metrics
 Metrics are exposed for a prometheus scraper at `0.0.0.0:9000`
 

@@ -1,6 +1,7 @@
 use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use std::time::Instant;
 
 use metrics::histogram;
 use tokio::sync::mpsc;
@@ -97,10 +98,14 @@ impl AggregatorProcess {
                 match exchange_rx.recv().await {
                     None => debug!("empty exchange update received on exchange channel"),
                     Some(orderbook_update) => {
+                        let now = Instant::now();
+
                         let instant = orderbook_update.ts.clone();
                         let exchange = orderbook_update.exchange.clone();
 
                         orderbook_data.update_exchange_data(orderbook_update);
+
+                        histogram!("orderbook_merge.time_taken_s", now.elapsed().as_secs_f64());
 
                         let summary = orderbook_data.summary();
                         watch_tx

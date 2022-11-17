@@ -8,7 +8,8 @@ lint:
 	cargo clippy
 
 build:
-	cargo build
+	cargo build --release	
+	cp ./Settings.toml target/release
 
 client:
 	RUST_LOG=info cargo run --bin client

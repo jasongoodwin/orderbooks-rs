@@ -8,6 +8,9 @@ license-file = "LICENSE"
 rust-version = "1.56"
 edition = "2021"
 
+[profile.release]
+lto = true
+
 [build-dependencies]
 tonic-build = "0.8"
 
