@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use async_trait::async_trait;
+use tokio::time::Instant;
 
 use serde::Deserialize;
 
@@ -19,6 +20,7 @@ pub struct BinanceUpdate {
 
 impl BinanceUpdate {
     fn to_orderbook_update(&self) -> Result<OrderBookUpdate> {
+        let ts = Instant::now(); // TODO this should be created before parsing.
         let mut bids = vec![];
         let mut asks = vec![];
 
@@ -40,6 +42,7 @@ impl BinanceUpdate {
         }
 
         Ok(OrderBookUpdate {
+            ts, // TS added a bit too late.
             exchange: String::from(EXCHANGE_KEY),
             bids,
             asks,
@@ -60,6 +63,7 @@ impl Exchange for Binance {
 
     fn empty_order_book_data(&self) -> OrderBookUpdate {
         OrderBookUpdate {
+            ts: Instant::now(),
             exchange: self.exchange_config.id.to_string(),
             bids: vec![],
             asks: vec![],
@@ -118,6 +122,7 @@ mod tests {
         assert_eq!(
             orderbook_update,
             OrderBookUpdate {
+                ts: orderbook_update.ts,
                 exchange: "binance".to_string(),
                 bids: vec![
                     Level {

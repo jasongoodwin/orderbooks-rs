@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use futures_util::{SinkExt, StreamExt};
 use tokio::sync::mpsc;
-use tokio::time::{sleep, Duration};
+use tokio::time::{sleep, Duration, Instant};
 use tokio_tungstenite::tungstenite::Message::Pong;
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
 
@@ -14,13 +14,23 @@ use crate::result::Result;
 mod binance;
 mod bitstamp;
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct OrderBookUpdate {
+    // Timestamp of message receipt to track to delivery (metrics)
+    pub(crate) ts: Instant,
     pub(crate) exchange: String,
     // Note: we use the Level struct which will duplicate the exchange in each level.
     // Could be optimized by using another struct but it's simpler like this for now.
     pub(crate) bids: Vec<Level>,
     pub(crate) asks: Vec<Level>,
+}
+
+#[async_trait]
+/// trait representing the specific implementation details needed for a specific exchange
+trait Exchange {
+    fn parse_order_book_data(&self, bytes: Vec<u8>) -> Result<OrderBookUpdate>;
+    fn empty_order_book_data(&self) -> OrderBookUpdate;
+    fn subscribe_msg(&self) -> String;
 }
 
 // TODOs:
@@ -29,7 +39,7 @@ pub struct OrderBookUpdate {
 // 3. If we don't get a message in x period of time, should probably close connection and re-establish.
 
 /// produces a thread to establish and manage connection/subscription to an exchange.
-pub async fn spawn_new_ws(
+pub async fn create_exchange_ws_connection(
     exchange_config: ExchangeConfig,
     subscribers_tx: mpsc::Sender<OrderBookUpdate>,
 ) -> Result<()> {
@@ -50,7 +60,7 @@ pub async fn spawn_new_ws(
         loop {
             // outer loop will establish connection
             info!(
-                "starting exchange order book collection for: [{:?}]",
+                "starting exchange ws order book collection for: [{:?}]",
                 exchange_config.clone()
             );
             let exchange: Box<dyn Exchange + Sync + Send> = match exchange_config.id.as_str() {
@@ -60,7 +70,7 @@ pub async fn spawn_new_ws(
                 bitstamp::EXCHANGE_KEY => Box::new(Bitstamp {
                     exchange_config: exchange_config.clone(),
                 }),
-                id => Err(format!("unsupported exchange configured: {}", id)).unwrap(), // TODO will bomb
+                id => Err(format!("unsupported exchange configured: {}", id)).unwrap(), // will crash the app.
             };
 
             let (mut ws_stream, _) = connect_async(exchange_config.endpoint.clone())
@@ -147,12 +157,4 @@ pub async fn spawn_new_ws(
     });
 
     Ok(())
-}
-
-#[async_trait]
-pub trait Exchange {
-    // async fn get_order_book_data(&self) -> Result<Vec<u8>>;
-    fn parse_order_book_data(&self, bytes: Vec<u8>) -> Result<OrderBookUpdate>;
-    fn empty_order_book_data(&self) -> OrderBookUpdate;
-    fn subscribe_msg(&self) -> String;
 }

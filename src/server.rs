@@ -43,9 +43,6 @@ async fn main() -> result::Result<()> {
 
     metrics::register_all();
 
-    // let exchanges: Vec<String> = settings.get("exchanges").expect("error in exchange config...");
-    // info!("starting all stream inputs for pairs on exchanges: {:?}", exchanges);
-
     // watch is used to send messages to the server/client connections.
     // Each client connection will observe when there is an update and then will read the most current values.
     // Note that borrows of the value will hold a read lock so they should be very short lived.
@@ -74,8 +71,9 @@ async fn main() -> result::Result<()> {
 
         info!("starting exchange stream for: [{}]", exchange);
 
-        exchange::spawn_new_ws(conf.clone(), tx.clone()).await; // todo await here unnecessary
-                                                                // .expect(&*format!("couldn't start exchange stream for {:?}", conf.clone()));
+        exchange::create_exchange_ws_connection(conf.clone(), tx.clone()).await;
+        // todo await here unnecessary
+        // .expect(&*format!("couldn't start exchange stream for {:?}", conf.clone()));
     }
 
     let addr = "[::1]:10000".parse().unwrap();

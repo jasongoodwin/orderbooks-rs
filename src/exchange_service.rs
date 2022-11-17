@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::pin::Pin;
 
 use futures_core::Stream;
+use metrics::histogram;
 use tokio::sync::mpsc;
 use tokio::sync::watch;
 use tokio_stream::wrappers::ReceiverStream;
@@ -80,12 +81,11 @@ impl OrderBookData {
 // TODO remove empty struct, use mod.
 pub struct AggregatorProcess {
     // receives new order book data from exchanges
-    // pub(crate) exchange_rx: mpsc::Receiver<OrderBookUpdate>,
     // sends the updated summary to a watch for clients
 }
 
 impl AggregatorProcess {
-    // TODO test.
+    // TODO test. Doesn't need to be async.
     pub async fn start(
         mut exchange_rx: mpsc::Receiver<OrderBookUpdate>,
         watch_tx: watch::Sender<Summary>,
@@ -98,10 +98,22 @@ impl AggregatorProcess {
             loop {
                 match exchange_rx.recv().await {
                     None => debug!("empty exchange update received on exchange channel"),
-                    Some(order_book_data) => {
-                        orderbook_data.update_exchange_data(order_book_data);
+                    Some(orderbook_update) => {
+                        // TODO rename stuff.
+                        let instant = orderbook_update.ts.clone();
+                        let exchange = orderbook_update.exchange.clone();
+
+                        histogram!(
+                            format!("exchange.{}.time_taken_s", exchange),
+                            instant.elapsed().as_secs_f64()
+                        ); // Would be better if exchange was a dimension.
+
+                        orderbook_data.update_exchange_data(orderbook_update);
+
                         let summary = orderbook_data.summary();
-                        watch_tx.send(summary).expect("un oh...");
+                        watch_tx
+                            .send(summary)
+                            .expect("something went wrong publishing watch...");
                     }
                 }
             }
@@ -128,11 +140,11 @@ impl OrderbookAggregator for OrderbookAggregatorServer {
 
     async fn book_summary(
         &self,
-        request: tonic::Request<crate::orderbook::Empty>,
+        _request: tonic::Request<crate::orderbook::Empty>,
     ) -> Result<tonic::Response<Self::BookSummaryStream>, tonic::Status> {
         let (tx, rx) = mpsc::channel(4);
 
-        let mut wrx: tokio::sync::watch::Receiver<Summary> = self.watch_rx.clone();
+        let mut wrx: watch::Receiver<Summary> = self.watch_rx.clone();
 
         tokio::spawn(async move {
             loop {
@@ -150,6 +162,7 @@ impl OrderbookAggregator for OrderbookAggregatorServer {
 #[cfg(test)]
 mod tests {
     use crate::orderbook::Level;
+    use tokio::time::Instant;
 
     use super::*;
 
@@ -177,6 +190,7 @@ mod tests {
         };
 
         let order_book_update = OrderBookUpdate {
+            ts: Instant::now(),
             exchange: "binance".to_string(),
             bids: sample_levels(
                 "binance".to_string(),
@@ -248,6 +262,7 @@ mod tests {
         };
 
         let order_book_update = OrderBookUpdate {
+            ts: Instant::now(),
             exchange: "binance".to_string(),
             bids: sample_levels(
                 "binance".to_string(),
@@ -268,6 +283,7 @@ mod tests {
         order_book_data.update_exchange_data(order_book_update);
 
         let order_book_update = OrderBookUpdate {
+            ts: Instant::now(),
             exchange: "binance".to_string(),
             bids: sample_levels(
                 "binance".to_string(),
@@ -339,6 +355,7 @@ mod tests {
         };
 
         let order_book_update = OrderBookUpdate {
+            ts: Instant::now(),
             exchange: "binance".to_string(),
             bids: sample_levels(
                 "binance".to_string(),
@@ -359,6 +376,7 @@ mod tests {
         order_book_data.update_exchange_data(order_book_update);
 
         let order_book_update = OrderBookUpdate {
+            ts: Instant::now(),
             exchange: "bitstamp".to_string(),
             bids: sample_levels(
                 "bitstamp".to_string(),
