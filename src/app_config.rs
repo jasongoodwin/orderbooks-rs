@@ -76,7 +76,7 @@ mod tests {
 
     #[test]
     fn should_instantiate() {
-        let conf = AppConfig::new().unwrap();
+        AppConfig::new().unwrap();
     }
 
     #[test]

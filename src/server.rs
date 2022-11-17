@@ -25,7 +25,7 @@ pub mod orderbook {
 
 #[tokio::main]
 async fn main() -> result::Result<()> {
-    println!("Starting app... Use RUST_LOG=info to enable logging.");
+    println!("Starting app... Use RUST_LOG=info to enable more logging.");
     env_logger::init();
 
     let conf = app_config::AppConfig::new().expect("couldn't read Settings...");
@@ -41,20 +41,20 @@ async fn main() -> result::Result<()> {
         &spot_pair, &enabled_exchanges
     );
 
-    metrics::register_all();
+    metrics::start_server_and_register();
 
     // watch is used to send messages to the server/client connections.
     // Each client connection will observe when there is an update and then will read the most current values.
     // Note that borrows of the value will hold a read lock so they should be very short lived.
     // This shouldn't cause any contention, but may need to revisit the use of channels
     // Optimization: use eg Arc<Summary> instead of Summary for the channels to prevent cloning of the Summary per client.
-    let (watch_tx, mut watch_rx) = watch::channel(Summary {
+    let (watch_tx, watch_rx) = watch::channel(Summary {
         spread: 0.0,
         bids: vec![],
         asks: vec![],
     });
 
-    let (tx, mut rx) = mpsc::channel(32);
+    let (tx, rx) = mpsc::channel(32);
 
     // Start the process that aggregates order books and supplies updates to the watch for single producer multi consumer semantics.
     AggregatorProcess::start(rx, watch_tx).await;
@@ -71,9 +71,12 @@ async fn main() -> result::Result<()> {
 
         info!("starting exchange stream for: [{}]", exchange);
 
-        exchange::create_exchange_ws_connection(conf.clone(), tx.clone()).await;
-        // todo await here unnecessary
-        // .expect(&*format!("couldn't start exchange stream for {:?}", conf.clone()));
+        exchange::create_exchange_ws_connection(conf.clone(), tx.clone())
+            .await
+            .expect(&*format!(
+                "couldn't start exchange stream for {:?}",
+                conf.clone()
+            ));
     }
 
     let addr = "[::1]:10000".parse().unwrap();

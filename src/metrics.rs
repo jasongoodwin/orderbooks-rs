@@ -6,16 +6,16 @@
 //! use cases, you can use the application, which exposes an API and scripting
 //! layer.
 
-use metrics::{counter, gauge, histogram, increment_counter, register_counter, register_gauge};
+use metrics::gauge;
 use metrics_exporter_prometheus::PrometheusBuilder;
 
 // Gauge to show how many services are running. The server will start and increment the gauge by 1.
-// This can be used for alerting if services die.
+// This can be used for alerting if services die (eg gauge = 0 means nothing running!)
 const RUNNING_GAUGE: &str = "running";
 
-// starts the prometheus exporter and registers all metrics.
+// starts the prometheus exporter and registers the service.
 // metrics can be seen at localhost:9000
-pub fn register_all() {
+pub fn start_server_and_register() {
     info!("starting metrics server @ 0.0.0.0:9000");
 
     let builder = PrometheusBuilder::new();

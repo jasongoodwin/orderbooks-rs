@@ -18,8 +18,8 @@ pub struct BitstampUpdate {
 }
 #[derive(Deserialize, Debug)]
 pub struct Data {
-    timestamp: String,
-    microtimestamp: String,
+    // timestamp: String,
+    // microtimestamp: String,
     bids: Vec<(String, String)>,
     asks: Vec<(String, String)>,
 }

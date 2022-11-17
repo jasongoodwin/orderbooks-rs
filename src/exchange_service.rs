@@ -1,9 +1,7 @@
 use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use std::pin::Pin;
 
-use futures_core::Stream;
 use metrics::histogram;
 use tokio::sync::mpsc;
 use tokio::sync::watch;
@@ -85,7 +83,7 @@ pub struct AggregatorProcess {
 }
 
 impl AggregatorProcess {
-    // TODO test. Doesn't need to be async.
+    // TODO test.
     pub async fn start(
         mut exchange_rx: mpsc::Receiver<OrderBookUpdate>,
         watch_tx: watch::Sender<Summary>,
@@ -99,14 +97,8 @@ impl AggregatorProcess {
                 match exchange_rx.recv().await {
                     None => debug!("empty exchange update received on exchange channel"),
                     Some(orderbook_update) => {
-                        // TODO rename stuff.
                         let instant = orderbook_update.ts.clone();
                         let exchange = orderbook_update.exchange.clone();
-
-                        histogram!(
-                            format!("exchange.{}.time_taken_s", exchange),
-                            instant.elapsed().as_secs_f64()
-                        ); // Would be better if exchange was a dimension.
 
                         orderbook_data.update_exchange_data(orderbook_update);
 
@@ -114,6 +106,11 @@ impl AggregatorProcess {
                         watch_tx
                             .send(summary)
                             .expect("something went wrong publishing watch...");
+
+                        histogram!(
+                            format!("exchange.{}.time_taken_s", exchange),
+                            instant.elapsed().as_secs_f64()
+                        ); // Would be better if exchange was a dimension.
                     }
                 }
             }
@@ -132,8 +129,6 @@ impl OrderbookAggregatorServer {
     }
 }
 
-type SummaryStream = Pin<Box<dyn Stream<Item = Result<Summary, tonic::Status>> + Send + 'static>>;
-
 #[tonic::async_trait]
 impl OrderbookAggregator for OrderbookAggregatorServer {
     type BookSummaryStream = ReceiverStream<Result<Summary, tonic::Status>>;
@@ -148,10 +143,15 @@ impl OrderbookAggregator for OrderbookAggregatorServer {
 
         tokio::spawn(async move {
             loop {
-                wrx.changed().await.unwrap(); // FIXME unsafe result.
+                match wrx.changed().await {
+                    Ok(_) => {}
+                    Err(e) => {
+                        error!("unexpected error waiting watch: {:?}", e);
+                    }
+                }
 
                 let val = wrx.borrow().clone();
-                tx.send(Ok(val)).await; // FIXME move await. also unused result.
+                tx.send(Ok(val)).await.unwrap(); // This will panic if something weird happens.
             }
         });
 
