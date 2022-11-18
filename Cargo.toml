@@ -9,7 +9,8 @@ rust-version = "1.56"
 edition = "2021"
 
 [profile.release]
-lto = true
+lto = "fat" 
+codegen-units = 1
 
 [build-dependencies]
 tonic-build = "0.8"
