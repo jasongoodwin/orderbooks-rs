@@ -35,6 +35,11 @@ It will print all updates to the console.
 You can adjust the log level with the RUST_LOG env variable. eg for debug:
 `RUST_LOG="info,orderbooks-rs=debug"`
 
+# Status
+There are a couple areas that could use some focus.
+- The exchange subscription reply isn't validated.
+- If messages aren't received after some period of time it may be worth stopping the exchange's endpoint + clearing the order book of that exchange's data. 
+
 # Design Notes
 Design document has information on the decisions made, gotchas, release notes etc.
 See: https://docs.google.com/document/d/1psDVXU6FtZIRYa8W-z8RewljaKUG55_zFdTU5fNDGGQ/edit?usp=sharing
