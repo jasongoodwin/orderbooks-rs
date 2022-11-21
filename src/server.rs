@@ -71,12 +71,7 @@ async fn main() -> result::Result<()> {
 
         info!("starting exchange stream for: [{}]", exchange);
 
-        exchange::create_exchange_ws_connection(conf.clone(), tx.clone())
-            .await
-            .expect(&*format!(
-                "couldn't start exchange stream for {:?}",
-                conf.clone()
-            ));
+        exchange::create_exchange_ws_connection(conf.clone(), tx.clone());
     }
 
     let addr = "[::1]:10000".parse().unwrap();

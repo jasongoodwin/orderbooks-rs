@@ -12,8 +12,7 @@ use crate::exchange::OrderBookUpdate;
 use crate::orderbook::orderbook_aggregator_server::OrderbookAggregator;
 use crate::orderbook::Summary;
 
-// todo make configurable
-const TOP_N: usize = 10;
+const TOP_N: usize = 10; // Determines how many bids/asks are kept.
 
 // maintains the last order book Summary for any number of exchanges.
 // This allows generation of a summary w/ top 10 bids/asks across exchanges
@@ -25,8 +24,6 @@ struct OrderBookData {
 impl OrderBookData {
     /// replaces the data from a specific exchange.
     pub fn update_exchange_data(&mut self, update: OrderBookUpdate) {
-        // TODO keep only top n on insert to make summary faster to build.
-        // TODO note if there are any differences! Only want to publish if there is actually a difference to top n.
         self.exchange_data.insert(update.exchange.clone(), update);
     }
 
@@ -77,14 +74,15 @@ impl OrderBookData {
     }
 }
 
-// TODO remove empty struct, use mod.
 pub struct AggregatorProcess {
     // receives new order book data from exchanges
     // sends the updated summary to a watch for clients
+    // struct unused - can be mod.
 }
 
 impl AggregatorProcess {
-    // TODO test.
+    // Spawns a process to receive OrderBookUpdates and merge them into OrderBookData which can then produce a merged view of orderbooks.
+    // It will send the updated merged order book to the watch, which the clients then receive.
     pub async fn start(
         mut exchange_rx: mpsc::Receiver<OrderBookUpdate>,
         watch_tx: watch::Sender<Summary>,
@@ -156,7 +154,7 @@ impl OrderbookAggregator for OrderbookAggregatorServer {
                 }
 
                 let val = wrx.borrow().clone();
-                tx.send(Ok(val)).await.unwrap(); // This will panic if something weird happens.
+                tx.send(Ok(val)).await;
             }
         });
 
