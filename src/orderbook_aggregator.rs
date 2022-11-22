@@ -1,3 +1,5 @@
+//! Contains the details for the async processes that receive and publish updates.
+//! See OrderBookData for merging updates and producing summary.
 use std::time::Instant;
 
 use metrics::histogram;

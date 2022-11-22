@@ -1,3 +1,5 @@
+//! exchange contains logic for spawning threads and connecting to remote exchanges via ws
+//! Different exchange details can be implemented via the Exchange trait.
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::sync::Arc;
