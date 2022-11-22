@@ -1,16 +1,14 @@
-use async_trait::async_trait;
-use futures_util::{SinkExt, StreamExt};
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::sync::Arc;
-use tokio::net::{TcpSocket, TcpStream};
+
+use async_trait::async_trait;
+use futures_util::{SinkExt, StreamExt};
+use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::Sender;
 use tokio::time::{sleep, Duration, Instant};
-use tokio_tungstenite::stream::Stream;
-use tokio_tungstenite::tungstenite::client::AutoStream;
 use tokio_tungstenite::tungstenite::Message::Pong;
-use tokio_tungstenite::tungstenite::WebSocket;
 use tokio_tungstenite::{
     connect_async, tungstenite::protocol::Message, MaybeTlsStream, WebSocketStream,
 };
@@ -117,7 +115,7 @@ async fn connect_and_subscribe(
 ) -> Result<WssStream> {
     let (mut ws_stream, _) = connect_async(exchange_config.endpoint.clone())
         .await
-        .map_err(|e| WsError::new("something went wrong".into()))?;
+        .map_err(|e| WsError::new(format!("something went wrong: {:?}", e).into()))?;
     info!(
         "WebSocket handshake has been successfully completed for {}",
         exchange_config.id.as_str()
@@ -139,7 +137,7 @@ async fn connect_and_subscribe(
             info!("got subscription reply {:?}", msg.to_string())
         }
         Some(e) => {
-            e.map_err(|e| Box::new(WsError::new("broken".into())))?;
+            e.map_err(|e| WsError::new(format!("something went wrong: {:?}", e).into()))?;
         }
     }
 
@@ -208,7 +206,9 @@ fn build_exchange_from_config(
         bitstamp::EXCHANGE_KEY => Ok(Box::new(Bitstamp {
             exchange_config: exchange_config.clone(),
         })),
-        id => Err(WsError::new("something went wrong".into()))?,
+        id => Err(WsError::new(
+            format!("error in configuration: unknown exchange id: {}", id).into(),
+        ))?,
     }
 }
 
@@ -225,7 +225,7 @@ impl WsError {
 
 impl Display for WsError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        write!(f, "Websocket error: {}", self.details)
     }
 }
 

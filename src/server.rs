@@ -10,13 +10,14 @@ extern crate log;
 use tokio::sync::{mpsc, watch};
 use tonic::transport::Server;
 
-use crate::exchange_service::{AggregatorProcess, OrderbookAggregatorServer};
 use crate::orderbook::*;
+use crate::orderbook_aggregator::OrderbookSummaryPublisher;
 
 mod app_config;
 mod exchange;
-mod exchange_service;
 mod metrics;
+mod orderbook_aggregator;
+mod orderbook_data;
 mod result;
 
 pub mod orderbook {
@@ -57,7 +58,7 @@ async fn main() -> result::Result<()> {
     let (tx, rx) = mpsc::channel(32);
 
     // Start the process that aggregates order books and supplies updates to the watch for single producer multi consumer semantics.
-    AggregatorProcess::start(rx, watch_tx).await;
+    OrderbookSummaryPublisher::start(rx, watch_tx).await;
 
     for exchange in enabled_exchanges {
         let conf = exchange_configs
@@ -75,7 +76,7 @@ async fn main() -> result::Result<()> {
     }
 
     let addr = "[::1]:10000".parse().unwrap();
-    let route_guide = OrderbookAggregatorServer::new(watch_rx);
+    let route_guide = OrderbookSummaryPublisher::new(watch_rx);
     let svc =
         crate::orderbook::orderbook_aggregator_server::OrderbookAggregatorServer::new(route_guide);
     Server::builder().add_service(svc).serve(addr).await?;

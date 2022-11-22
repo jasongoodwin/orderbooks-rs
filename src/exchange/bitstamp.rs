@@ -1,4 +1,3 @@
-use std::error::Error;
 use std::str::FromStr;
 
 use async_trait::async_trait;
@@ -7,7 +6,7 @@ use tokio::time::Instant;
 use serde::Deserialize;
 
 use crate::app_config::ExchangeConfig;
-use crate::exchange::{Exchange, OrderBookUpdate, WsError};
+use crate::exchange::{Exchange, OrderBookUpdate};
 use crate::orderbook::Level;
 use crate::result::Result;
 pub(crate) const EXCHANGE_KEY: &str = "bitstamp";
