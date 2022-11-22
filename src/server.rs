@@ -10,13 +10,15 @@ extern crate log;
 use tokio::sync::{mpsc, watch};
 use tonic::transport::Server;
 
-use crate::exchange_service::{AggregatorProcess, OrderbookAggregatorServer};
 use crate::orderbook::*;
+use crate::orderbook_aggregator::AggregatorProcess;
 
 mod app_config;
 mod exchange;
 mod exchange_service;
 mod metrics;
+mod orderbook_aggregator;
+mod orderbook_data;
 mod result;
 
 pub mod orderbook {
@@ -80,7 +82,7 @@ async fn main() -> result::Result<()> {
     }
 
     let addr = "[::1]:10000".parse().unwrap();
-    let route_guide = OrderbookAggregatorServer::new(watch_rx);
+    let route_guide = orderbook_aggregator::OrderbookAggregatorServer::new(watch_rx);
     let svc =
         crate::orderbook::orderbook_aggregator_server::OrderbookAggregatorServer::new(route_guide);
     Server::builder().add_service(svc).serve(addr).await?;
