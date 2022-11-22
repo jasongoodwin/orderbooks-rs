@@ -1,9 +1,4 @@
-//! orderbooks-rs: glean some insight from market depth!
-//!
-//! The application tries to be simple and flat as best it can.
-//! The application is separated into modules for major functionality.
-//! See the Settings.toml file for configuration.
-
+//! orderbook-rs server - this is the main entry point to the server application.
 #[macro_use]
 extern crate log;
 

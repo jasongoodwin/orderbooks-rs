@@ -1,4 +1,7 @@
 //! contains an abstraction for the application configuration.
+//! It will read from Settings.toml and find the pair, enabled exchanges, and exchange specific details.
+//! Rather than hardcoding exchange endpoints and details, it's in configuration.
+//! If something changes on the exchange side, it _should hopefully_ be fixable without recompiling.
 use config::Config;
 
 // [jasongoodwin - 2022/11/10] may need to be made a bit more exchange specific as other exchanges added.

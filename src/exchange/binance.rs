@@ -1,3 +1,4 @@
+//! Binance specific details for subscribing to and parsing orderbook data.
 use std::str::FromStr;
 
 use async_trait::async_trait;

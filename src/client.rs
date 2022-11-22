@@ -1,3 +1,4 @@
+//! orderbook-rs demonstration client - this will connect to a running server and print updates.
 use crate::orderbook::orderbook_aggregator_client::*;
 use crate::orderbook::*;
 

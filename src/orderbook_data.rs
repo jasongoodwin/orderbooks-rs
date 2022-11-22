@@ -1,3 +1,5 @@
+//! contains the logic in the application that merges OrderBookUpdates for different exchanges
+//! and will provide a Summary with TOP_N bids/asks and the spread across all exchange data.
 use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::collections::HashMap;

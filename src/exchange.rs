@@ -117,7 +117,7 @@ async fn connect_and_subscribe(
 ) -> Result<WssStream> {
     let (mut ws_stream, _) = connect_async(exchange_config.endpoint.clone())
         .await
-        .map_err(|e| WsError::new(format!("something went wrong: {:?}", e).into()))?;
+        .map_err(|e| WsError::new(format!("error connecting to websocket: {:?}", e).into()))?;
     info!(
         "WebSocket handshake has been successfully completed for {}",
         exchange_config.id.as_str()
@@ -127,19 +127,25 @@ async fn connect_and_subscribe(
     ws_stream
         .send(Message::text(exchange.subscribe_msg()))
         .await
-        .expect("panic on sub failure");
+        .map_err(|e| WsError::new(format!("error subscribing via websocket: {:?}", e).into()))?;
 
     // Get the reply message. If anything not as expected, we just continue the loop w/ a delay.
     match ws_stream.next().await {
         None => {
-            Err(Box::new(WsError::new("busted".into())))?;
+            Err(Box::new(WsError::new(
+                "error getting next subscription message...".into(),
+            )))?;
         }
         Some(Ok(msg)) => {
             // FIXME need validate the subscription reply is as expected. implement in Exchange trait.
             info!("got subscription reply {:?}", msg.to_string())
         }
         Some(e) => {
-            e.map_err(|e| WsError::new(format!("something went wrong: {:?}", e).into()))?;
+            e.map_err(|e| {
+                WsError::new(
+                    format!("something went wrong connecting/subscribing...: {:?}", e).into(),
+                )
+            })?;
         }
     }
 
