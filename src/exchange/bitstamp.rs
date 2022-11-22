@@ -13,11 +13,12 @@ use crate::result::Result;
 pub(crate) const EXCHANGE_KEY: &str = "bitstamp";
 
 #[derive(Deserialize, Debug)]
-pub struct BitstampUpdate {
+// structure for json deserialization
+struct BitstampUpdate {
     data: Data,
 }
 #[derive(Deserialize, Debug)]
-pub struct Data {
+struct Data {
     // timestamp: String,
     // microtimestamp: String,
     bids: Vec<(String, String)>,

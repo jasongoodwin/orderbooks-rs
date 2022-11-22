@@ -24,7 +24,7 @@ use crate::result::Result;
 mod binance;
 mod bitstamp;
 
-// We wait to avoid hammering the endpoint on retries. Contains the wait time.
+// We wait to avoid hammering the endpoint on retries. Contains the wait time before trying a connection.
 const SLEEP_MS: u64 = 100;
 
 #[derive(Debug, PartialEq)]
@@ -48,8 +48,8 @@ trait Exchange {
 
 // TODOs:
 // 1. validate subscription reply
-// 2. refactor to test message receipt/reply.
-// 3. If we don't get a message in x period of time, should probably close connection and re-establish.
+// 2. If we don't get a message in x period of time, should probably close connection and re-establish. Takes too long for exchange...
+// 3. Can test this w/ channels.
 
 type WssStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
@@ -58,8 +58,6 @@ pub fn create_exchange_ws_connection(
     exchange_config: ExchangeConfig,
     subscribers_tx: mpsc::Sender<OrderBookUpdate>,
 ) {
-    // TODO no result type needed here.
-
     tokio::spawn(async move {
         // there are essentially two nested loops. If an error is encountered in the inner loop (handle_messages),
         // we can drop the connection, and let the connection be re-established.
@@ -86,12 +84,11 @@ pub fn create_exchange_ws_connection(
                                                                                             //
             let ws_stream = match connect_and_subscribe(&exchange_config, exchange.clone()).await {
                 Ok(ws_stream) => ws_stream,
-                Err(_) => {
-                    // error!("{:?}", e);
+                Err(e) => {
+                    error!("Error connecting/subscribing... Will retry. {:?}", e);
                     continue;
                 }
             };
-            //
             handle_messages(
                 exchange_config.clone(),
                 &subscribers_tx,
@@ -99,16 +96,13 @@ pub fn create_exchange_ws_connection(
                 ws_stream,
             )
             .await;
-            //
-            // // Clear the order book if we shut the connection down.
+            // Clear the order book if we shut the connection down.
             subscribers_tx
                 .send(exchange.empty_order_book_data())
                 .await
                 .expect("unexpected error sending to channel. Panic!");
         }
     });
-
-    // Ok(())
 }
 
 async fn connect_and_subscribe(

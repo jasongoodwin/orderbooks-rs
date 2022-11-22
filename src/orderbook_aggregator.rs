@@ -53,7 +53,7 @@ impl OrderbookSummaryPublisher {
                         histogram!(
                             format!("exchange.{}.time_taken_s", exchange),
                             instant.elapsed().as_secs_f64()
-                        ); // Would be better if exchange was a dimension.
+                        ); // Would be nice if exchange was a dimension on the metric so you'd get the rollup.
                     }
                 }
             }

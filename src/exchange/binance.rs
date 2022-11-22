@@ -14,6 +14,7 @@ use crate::result::Result;
 pub(crate) const EXCHANGE_KEY: &str = "binance";
 
 #[derive(Deserialize, Debug)]
+// structure for json deserialization
 pub struct BinanceUpdate {
     bids: Vec<(String, String)>,
     asks: Vec<(String, String)>,
