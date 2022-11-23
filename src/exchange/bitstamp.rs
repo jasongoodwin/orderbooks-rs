@@ -39,7 +39,6 @@ impl BitstampUpdate {
             });
         }
 
-        // FIXME codesmell: duplication
         for (price, amount) in &self.data.asks {
             asks.push(Level {
                 exchange: String::from(EXCHANGE_KEY),

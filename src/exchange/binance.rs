@@ -34,7 +34,6 @@ impl BinanceUpdate {
             });
         }
 
-        // FIXME codesmell: duplication
         for (price, amount) in &self.asks {
             asks.push(Level {
                 exchange: String::from(EXCHANGE_KEY),
@@ -44,7 +43,7 @@ impl BinanceUpdate {
         }
 
         Ok(OrderBookUpdate {
-            ts, // TS added a bit too late.
+            ts,
             exchange: String::from(EXCHANGE_KEY),
             bids,
             asks,
@@ -86,7 +85,6 @@ impl Exchange for Binance {
 
 #[cfg(test)]
 mod tests {
-    // use crate::app_config::AppConfig;
     use super::*;
 
     #[test]

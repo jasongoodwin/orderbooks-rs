@@ -73,9 +73,6 @@ pub fn create_exchange_ws_connection(
         // the exchange available until we re-establish stability.
         loop {
             // we wait 100ms before any connection attempt to ensure we don't hammer the endpoint.
-            sleep(Duration::from_millis(SLEEP_MS)).await; // wait 100ms to avoid hammering a failing endpoint.
-                                                          //
-                                                          // // outer loop will establish connection
             info!(
                 "starting exchange ws order book collection for: [{:?}]",
                 exchange_config.clone()
@@ -89,6 +86,7 @@ pub fn create_exchange_ws_connection(
                     continue;
                 }
             };
+
             handle_messages(
                 exchange_config.clone(),
                 &subscribers_tx,
@@ -96,11 +94,14 @@ pub fn create_exchange_ws_connection(
                 ws_stream,
             )
             .await;
+
             // Clear the order book if we shut the connection down.
             subscribers_tx
                 .send(exchange.empty_order_book_data())
                 .await
                 .expect("unexpected error sending to channel. Panic!");
+
+            sleep(Duration::from_millis(SLEEP_MS)).await; // wait 100ms to avoid hammering a failing endpoint.
         }
     });
 }
