@@ -155,9 +155,10 @@ async fn handle_messages(
     loop {
         // inner loop will process any input received.
         let exchange = exchange.clone();
-        match ws_stream.next().await {
+
+        match tokio::time::timeout(Duration::from_secs(1), ws_stream.next()).await {
             // We explicitly handle ping frames and reply w/ a pong frame (binance will disconnect after 10m if not handled)
-            Some(Ok(msg)) if msg.is_ping() => {
+            Ok(Some(Ok(msg))) if msg.is_ping() => {
                 info!(
                     "ping frame received for {}. Sending pong",
                     exchange_config.id.as_str()
@@ -170,7 +171,7 @@ async fn handle_messages(
                     break;
                 }
             }
-            Some(Ok(msg)) => {
+            Ok(Some(Ok(msg))) => {
                 match exchange.parse_order_book_data(msg.into_data().clone()) {
                     Ok(order_book_update) => {
                         // can possibly spawn this instead of awaiting, but need to ensure order.
@@ -185,13 +186,8 @@ async fn handle_messages(
                     }
                 }
             }
-            None => info!("No message received off of ws..."),
-            Some(Err(e)) => {
-                error!(
-                    "Error encountered on ws for {:?}. will restart connection... {:?}",
-                    exchange_config.id.as_str(),
-                    e
-                );
+            e => {
+                error!("exchange connection error... Will restart. {:?}", e);
                 break;
             }
         }
