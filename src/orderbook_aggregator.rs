@@ -83,7 +83,8 @@ impl OrderbookAggregator for OrderbookSummaryPublisher {
                 match wrx.changed().await {
                     Ok(_) => {}
                     Err(e) => {
-                        error!("unexpected error waiting watch: {:?}", e);
+                        error!("Client receive error. Closing connection. {:?}", e);
+                        break;
                     }
                 }
 
@@ -92,7 +93,8 @@ impl OrderbookAggregator for OrderbookSummaryPublisher {
                 match tx.send(Ok(val)).await {
                     Ok(_) => {}
                     Err(e) => {
-                        error!("unexpected error waiting watch: {:?}", e);
+                        error!("Client send error. Closing connection. {:?}", e);
+                        break;
                     }
                 };
             }
