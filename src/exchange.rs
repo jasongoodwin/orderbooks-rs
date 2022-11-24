@@ -28,6 +28,7 @@ mod bitstamp;
 const SLEEP_MS: u64 = 100;
 
 #[derive(Debug, PartialEq)]
+/// structure representing bids/asks received from an exchange.
 pub struct OrderBookUpdate {
     // Timestamp of OrderBookUpdate creation for metrics. This is a little late but captures our code.
     pub(crate) ts: Instant,
@@ -78,7 +79,7 @@ pub fn create_exchange_ws_connection(
                 exchange_config.clone()
             );
             let exchange = Arc::new(build_exchange_from_config(&exchange_config).unwrap()); // will panic the app if can't build from config.
-                                                                                            //
+
             let ws_stream = match connect_and_subscribe(&exchange_config, exchange.clone()).await {
                 Ok(ws_stream) => ws_stream,
                 Err(e) => {
@@ -106,6 +107,7 @@ pub fn create_exchange_ws_connection(
     });
 }
 
+/// connects to ws endpoint and subscribes to the pair
 async fn connect_and_subscribe(
     exchange_config: &ExchangeConfig,
     exchange: Arc<Box<dyn Exchange + Sync + Send>>,
@@ -147,6 +149,7 @@ async fn connect_and_subscribe(
     Ok(ws_stream)
 }
 
+/// handle messages will loop and stream messages received.
 async fn handle_messages(
     exchange_config: ExchangeConfig,
     subscribers_tx: &Sender<OrderBookUpdate>,
@@ -157,6 +160,10 @@ async fn handle_messages(
         // inner loop will process any input received.
         let exchange = exchange.clone();
 
+        // It can take a long time to detect a failure, so we aggressively reset the connection if nothing is coming over the wire. https://github.com/snapview/tungstenite-rs/issues/225
+        // this can cause connections to be terminated and exchange data to be dropped potentially too aggressively. Could try using ws ping frames instead to ensure it's alive.
+        // eg bitstamp may not have an order book change in 1s, but we'll potentially kill the connection and drop the data.
+        // It just takes too long for tcp to identify the connection is dead with default settings. See the github thread - different approaches are available.
         match tokio::time::timeout(Duration::from_secs(1), ws_stream.next()).await {
             // We explicitly handle ping frames and reply w/ a pong frame (binance will disconnect after 10m if not handled)
             Ok(Some(Ok(msg))) if msg.is_ping() => {
@@ -195,6 +202,7 @@ async fn handle_messages(
     }
 }
 
+/// builds the specific Exchange from the config details.
 fn build_exchange_from_config(
     exchange_config: &ExchangeConfig,
 ) -> Result<Box<dyn Exchange + Sync + Send>> {
@@ -212,6 +220,7 @@ fn build_exchange_from_config(
 }
 
 #[derive(Debug)]
+/// represents an error in the Ws connection/stream handling.
 struct WsError {
     details: String,
 }
