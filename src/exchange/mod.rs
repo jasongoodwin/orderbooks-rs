@@ -9,11 +9,11 @@ use futures_util::{SinkExt, StreamExt};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::Sender;
-use tokio::time::{sleep, Duration, Instant};
-use tokio_tungstenite::tungstenite::Message::Pong;
+use tokio::time::{Duration, Instant, sleep};
 use tokio_tungstenite::{
-    connect_async, tungstenite::protocol::Message, MaybeTlsStream, WebSocketStream,
+    connect_async, MaybeTlsStream, tungstenite::protocol::Message, WebSocketStream,
 };
+use tokio_tungstenite::tungstenite::Message::Pong;
 
 use crate::app_config::ExchangeConfig;
 use crate::exchange::binance::Binance;
@@ -23,6 +23,7 @@ use crate::result::Result;
 
 mod binance;
 mod bitstamp;
+// mod bybit;
 
 // We wait to avoid hammering the endpoint on retries. Contains the wait time before trying a connection.
 const SLEEP_MS: u64 = 100;
@@ -43,8 +44,27 @@ pub struct OrderBookUpdate {
 /// trait representing the specific implementation details needed for a specific exchange
 trait Exchange {
     fn parse_order_book_data(&self, bytes: Vec<u8>) -> Result<OrderBookUpdate>;
-    fn empty_order_book_data(&self) -> OrderBookUpdate;
-    fn subscribe_msg(&self) -> String;
+
+    fn exchange_config(&self) -> &ExchangeConfig;
+
+    fn subscribe_msg(&self) -> String {
+        let pair = self.exchange_config().spot_pair.to_lowercase();
+        let msg = self
+            .exchange_config()
+            .subscription_message_template
+            .replace("{{pair}}", &pair);
+        info!("sub message {}", msg.clone());
+        msg
+    }
+
+    fn empty_order_book_data(&self) -> OrderBookUpdate {
+        OrderBookUpdate {
+            ts: Instant::now(),
+            exchange: self.exchange_config().id.to_string(),
+            bids: vec![],
+            asks: vec![],
+        }
+    }
 }
 
 // TODOs:
@@ -160,7 +180,7 @@ async fn handle_messages(
         // inner loop will process any input received.
         let exchange = exchange.clone();
 
-        // It can take a long time to detect a failure, so we aggressively reset the connection if nothing is coming over the wire. https://github.com/snapview/tungstenite-rs/issues/225
+        // It can take a long time to detect a failure, so we reset the connection if nothing is coming over the wire. https://github.com/snapview/tungstenite-rs/issues/225
         // this can cause connections to be terminated and exchange data to be dropped potentially too aggressively. Could try using ws ping frames instead to ensure it's alive.
         // eg bitstamp may not have an order book change in 1s, but we'll potentially kill the connection and drop the data.
         // It just takes too long for tcp to identify the connection is dead with default settings. See the github thread - different approaches are available.

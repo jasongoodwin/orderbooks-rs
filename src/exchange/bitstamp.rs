@@ -27,7 +27,7 @@ struct Data {
 
 impl BitstampUpdate {
     fn to_orderbook_update(&self) -> Result<OrderBookUpdate> {
-        let ts = Instant::now(); // TODO should be created before parsing!
+        let ts = Instant::now();
         let mut bids = vec![];
         let mut asks = vec![];
 
@@ -67,6 +67,10 @@ impl Exchange for Bitstamp {
         parsed.to_orderbook_update()
     }
 
+    fn exchange_config(&self) -> &ExchangeConfig {
+        &self.exchange_config
+    }
+
     fn empty_order_book_data(&self) -> OrderBookUpdate {
         OrderBookUpdate {
             ts: Instant::now(),
@@ -74,16 +78,6 @@ impl Exchange for Bitstamp {
             bids: vec![],
             asks: vec![],
         }
-    }
-
-    fn subscribe_msg(&self) -> String {
-        let pair = self.exchange_config.spot_pair.to_lowercase();
-        let msg = self
-            .exchange_config
-            .subscription_message_template
-            .replace("{{pair}}", &pair);
-        info!("sub message {}", msg.clone());
-        msg
     }
 }
 

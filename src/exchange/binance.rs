@@ -55,13 +55,21 @@ pub struct Binance {
     pub(crate) exchange_config: ExchangeConfig,
 }
 
+
 #[async_trait]
 impl Exchange for Binance {
+    /// Takes raw bytes from an exchange update and returns an OrderBookUpdate
     fn parse_order_book_data(&self, bytes: Vec<u8>) -> Result<OrderBookUpdate> {
         let parsed: BinanceUpdate = serde_json::from_slice(&bytes).unwrap();
         parsed.to_orderbook_update()
     }
 
+    /// Returns the exchange configuration
+    fn exchange_config(&self) -> &ExchangeConfig {
+        &self.exchange_config
+    }
+
+    /// Returns an empty order book update for the exchange. Used to clear the data in case of failure.
     fn empty_order_book_data(&self) -> OrderBookUpdate {
         OrderBookUpdate {
             ts: Instant::now(),
@@ -69,17 +77,6 @@ impl Exchange for Binance {
             bids: vec![],
             asks: vec![],
         }
-    }
-
-    fn subscribe_msg(&self) -> String {
-        // TODO identical. Move to Exchange as default impl.
-        let pair = self.exchange_config.spot_pair.to_lowercase();
-        let msg = self
-            .exchange_config
-            .subscription_message_template
-            .replace("{{pair}}", &pair);
-        info!("sub message {}", msg.clone());
-        msg
     }
 }
 
