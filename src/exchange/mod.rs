@@ -9,11 +9,11 @@ use futures_util::{SinkExt, StreamExt};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::Sender;
-use tokio::time::{Duration, Instant, sleep};
-use tokio_tungstenite::{
-    connect_async, MaybeTlsStream, tungstenite::protocol::Message, WebSocketStream,
-};
+use tokio::time::{sleep, Duration, Instant};
 use tokio_tungstenite::tungstenite::Message::Pong;
+use tokio_tungstenite::{
+    connect_async, tungstenite::protocol::Message, MaybeTlsStream, WebSocketStream,
+};
 
 use crate::app_config::ExchangeConfig;
 use crate::exchange::binance::Binance;
@@ -23,7 +23,6 @@ use crate::result::Result;
 
 mod binance;
 mod bitstamp;
-// mod bybit;
 
 // We wait to avoid hammering the endpoint on retries. Contains the wait time before trying a connection. Should be in config...
 const SLEEP_MS: u64 = 100;
@@ -233,6 +232,9 @@ fn build_exchange_from_config(
         bitstamp::EXCHANGE_KEY => Ok(Box::new(Bitstamp {
             exchange_config: exchange_config.clone(),
         })),
+        // bybit::EXCHANGE_KEY => Ok(Box::new(Bybit {
+        //     exchange_config: exchange_config.clone(),
+        // })),
         id => Err(WsError::new(
             format!("error in configuration: unknown exchange id: {}", id).into(),
         ))?,

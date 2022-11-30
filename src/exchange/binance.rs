@@ -15,7 +15,7 @@ pub(crate) const EXCHANGE_KEY: &str = "binance";
 
 #[derive(Deserialize, Debug)]
 // structure for json deserialization
-pub struct BinanceUpdate {
+struct BinanceUpdate {
     bids: Vec<(String, String)>,
     asks: Vec<(String, String)>,
 }
@@ -54,7 +54,6 @@ impl BinanceUpdate {
 pub struct Binance {
     pub(crate) exchange_config: ExchangeConfig,
 }
-
 
 #[async_trait]
 impl Exchange for Binance {
