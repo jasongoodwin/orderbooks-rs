@@ -25,7 +25,7 @@ mod binance;
 mod bitstamp;
 // mod bybit;
 
-// We wait to avoid hammering the endpoint on retries. Contains the wait time before trying a connection.
+// We wait to avoid hammering the endpoint on retries. Contains the wait time before trying a connection. Should be in config...
 const SLEEP_MS: u64 = 100;
 
 #[derive(Debug, PartialEq)]
@@ -69,7 +69,7 @@ trait Exchange {
 
 // TODOs:
 // 1. validate subscription reply
-// 2. If we don't get a message in x period of time, should probably close connection and re-establish. Takes too long for exchange...
+// 2. [DONE] If we don't get a message in x period of time, should probably close connection and re-establish. Takes too long for exchange...
 // 3. Can test this w/ channels.
 
 type WssStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
