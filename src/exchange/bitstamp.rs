@@ -63,7 +63,7 @@ pub struct Bitstamp {
 #[async_trait]
 impl Exchange for Bitstamp {
     fn parse_order_book_data(&self, bytes: Vec<u8>) -> Result<OrderBookUpdate> {
-        let parsed: BitstampUpdate = serde_json::from_slice(&bytes).unwrap();
+        let parsed: BitstampUpdate = serde_json::from_slice(&bytes)?;
         parsed.to_orderbook_update()
     }
 

@@ -59,7 +59,7 @@ pub struct Binance {
 impl Exchange for Binance {
     /// Takes raw bytes from an exchange update and returns an OrderBookUpdate
     fn parse_order_book_data(&self, bytes: Vec<u8>) -> Result<OrderBookUpdate> {
-        let parsed: BinanceUpdate = serde_json::from_slice(&bytes).unwrap();
+        let parsed: BinanceUpdate = serde_json::from_slice(&bytes)?;
         parsed.to_orderbook_update()
     }
 
