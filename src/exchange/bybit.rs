@@ -1,5 +1,5 @@
 // TODO - Was looking at other exchanges to validate the design. bybit works a bit differently - it sends a snapshot and then updates to it.
-// This will work, but the Bybit specific details will need to hold the snapshot and then modify it with the diffs.
+// This would work, but the Bybit specific details will need to hold the snapshot (eg on validation of the subscription response) and then modify internal state with the diffs.
 
 // //! Bybit specific details for subscribing to and parsing orderbook data.
 // use std::io::Read;
