@@ -22,6 +22,7 @@ pub struct ExchangeConfig {
     pub(crate) endpoint: String,
     pub(crate) subscription_message_template: String,
     pub(crate) spot_pair: String,
+    pub(crate) receive_timeout_s: u64,
 }
 
 pub struct AppConfig {
@@ -61,11 +62,16 @@ impl AppConfig {
 
             let spot_pair = self.spot_pair()?;
 
+            let receive_timeout_s = self
+                .config
+                .get::<u64>(&*format!("{}.receive_timeout_s", id))?;
+
             exchange_configs.push(ExchangeConfig {
                 id,
                 endpoint,
                 subscription_message_template,
                 spot_pair,
+                receive_timeout_s,
             });
         }
 
@@ -108,7 +114,8 @@ mod tests {
     }
 }"#
             .to_string(),
-            spot_pair: "BTCUSDT".to_string()
+            spot_pair: "BTCUSDT".to_string(),
+            receive_timeout_s: 20,
         }));
 
         assert!(exchange_configs.contains(&ExchangeConfig {
@@ -122,7 +129,8 @@ mod tests {
   "id": 1
 }"#
             .to_string(),
-            spot_pair: "BTCUSDT".to_string()
+            spot_pair: "BTCUSDT".to_string(),
+            receive_timeout_s: 1,
         }));
 
         Ok(())

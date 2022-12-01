@@ -184,10 +184,15 @@ async fn handle_messages(
         let exchange = exchange.clone();
 
         // It can take a long time to detect a failure, so we reset the connection if nothing is coming over the wire. https://github.com/snapview/tungstenite-rs/issues/225
-        // this can cause connections to be terminated and exchange data to be dropped potentially too aggressively. Could try using ws ping frames instead to ensure it's alive.
-        // eg bitstamp may not have an order book change in 1s, but we'll potentially kill the connection and drop the data.
-        // It just takes too long for tcp to identify the connection is dead with default settings. See the github thread - different approaches are available.
-        match tokio::time::timeout(Duration::from_secs(20), ws_stream.next()).await {
+        // this will cause connections to be terminated and exchange data to be dropped. Could try using ws ping frames instead to ensure it's alive.
+        // eg bitstamp may not have an order book change in 1s and that be valid, but binance should send every n ms.
+        // This is configurable per exchange to handle the different implementation details.
+        match tokio::time::timeout(
+            Duration::from_secs(exchange_config.receive_timeout_s),
+            ws_stream.next(),
+        )
+        .await
+        {
             // We explicitly handle ping frames and reply w/ a pong frame (binance will disconnect after 10m if not handled)
             Ok(Some(Ok(msg))) if msg.is_ping() => {
                 info!(

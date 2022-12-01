@@ -22,6 +22,7 @@ subscription_message_template = """{
         "channel": "order_book_{{pair}}"
     }
 }"""
+receive_timeout_s = 20
 
 [binance]
 endpoint = "wss://stream.binance.com:9443/ws"
@@ -32,6 +33,7 @@ subscription_message_template = """{
   ],
   "id": 1
 }"""
+receive_timeout_s = 1
 
 #[bybit]
 #endpoint = "wss://stream.bybit.com/realtime"
