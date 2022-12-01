@@ -69,7 +69,7 @@ trait Exchange {
 }
 
 // TODOs:
-// 1. validate subscription reply
+// 1. [DONE] validate subscription reply
 // 2. [DONE] If we don't get a message in x period of time, should probably close connection and re-establish. Takes too long for exchange...
 // 3. Can test this w/ channels.
 
