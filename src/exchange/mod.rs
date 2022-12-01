@@ -25,7 +25,7 @@ mod binance;
 mod bitstamp;
 
 // We wait to avoid hammering the endpoint on retries. Contains the wait time before trying a connection. Should be in config...
-const SLEEP_MS: u64 = 100;
+const SLEEP_MS: u64 = 250;
 
 #[derive(Debug, PartialEq)]
 /// structure representing bids/asks received from an exchange.
@@ -92,28 +92,26 @@ pub fn create_exchange_ws_connection(
         // Eg if the exchange endpoint goes down, we want to signal that there are no bids/asks for
         // the exchange available until we re-establish stability.
         loop {
-            // we wait 100ms before any connection attempt to ensure we don't hammer the endpoint.
             info!(
                 "starting exchange ws order book collection for: [{:?}]",
                 exchange_config.clone()
             );
             let exchange = Arc::new(build_exchange_from_config(&exchange_config).unwrap()); // will panic the app if can't build from config.
 
-            let ws_stream = match connect_and_subscribe(&exchange_config, exchange.clone()).await {
-                Ok(ws_stream) => ws_stream,
+            match connect_and_subscribe(&exchange_config, exchange.clone()).await {
+                Ok(ws_stream) => {
+                    handle_messages(
+                        exchange_config.clone(),
+                        &subscribers_tx,
+                        exchange.clone(),
+                        ws_stream,
+                    )
+                    .await;
+                }
                 Err(e) => {
                     error!("Error connecting/subscribing... Will retry. {:?}", e);
-                    continue;
                 }
             };
-
-            handle_messages(
-                exchange_config.clone(),
-                &subscribers_tx,
-                exchange.clone(),
-                ws_stream,
-            )
-            .await;
 
             // Clear the order book if we shut the connection down.
             subscribers_tx
@@ -121,6 +119,11 @@ pub fn create_exchange_ws_connection(
                 .await
                 .expect("unexpected error sending to channel. Panic!");
 
+            debug!(
+                "waiting {}ms before restarting connection to {}...",
+                SLEEP_MS,
+                exchange_config.id.clone()
+            );
             sleep(Duration::from_millis(SLEEP_MS)).await; // wait 100ms to avoid hammering a failing endpoint.
         }
     });

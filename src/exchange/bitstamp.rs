@@ -70,15 +70,6 @@ impl Exchange for Bitstamp {
     fn exchange_config(&self) -> &ExchangeConfig {
         &self.exchange_config
     }
-
-    fn empty_order_book_data(&self) -> OrderBookUpdate {
-        OrderBookUpdate {
-            ts: Instant::now(),
-            exchange: self.exchange_config.id.to_string(),
-            bids: vec![],
-            asks: vec![],
-        }
-    }
 }
 
 #[cfg(test)]

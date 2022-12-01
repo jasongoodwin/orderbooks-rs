@@ -67,16 +67,6 @@ impl Exchange for Binance {
     fn exchange_config(&self) -> &ExchangeConfig {
         &self.exchange_config
     }
-
-    /// Returns an empty order book update for the exchange. Used to clear the data in case of failure.
-    fn empty_order_book_data(&self) -> OrderBookUpdate {
-        OrderBookUpdate {
-            ts: Instant::now(),
-            exchange: self.exchange_config.id.to_string(),
-            bids: vec![],
-            asks: vec![],
-        }
-    }
 }
 
 #[cfg(test)]
