@@ -33,6 +33,6 @@ subscription_message_template = """{
   "id": 1
 }"""
 
-[bybit]
-endpoint = "wss://stream.bybit.com/realtime"
-subscription_message_template = """{"op": "subscribe", "args": ["orderBookL2_25.{{pair}}"]}"""
+#[bybit]
+#endpoint = "wss://stream.bybit.com/realtime"
+#subscription_message_template = """{"op": "subscribe", "args": ["orderBookL2_25.{{pair}}"]}"""
