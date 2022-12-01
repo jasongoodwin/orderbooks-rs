@@ -7,7 +7,7 @@ use tokio::time::Instant;
 use serde::Deserialize;
 
 use crate::app_config::ExchangeConfig;
-use crate::exchange::{Exchange, OrderBookUpdate};
+use crate::exchange::{Exchange, OrderBookUpdate, WsError};
 use crate::orderbook::Level;
 use crate::result::Result;
 
@@ -66,6 +66,25 @@ impl Exchange for Binance {
     /// Returns the exchange configuration
     fn exchange_config(&self) -> &ExchangeConfig {
         &self.exchange_config
+    }
+
+    fn validate_subscription_reply(&self, bytes: Vec<u8>) -> Result<()> {
+        let reply = String::from_utf8(bytes)?;
+        if reply == "{\"result\":null,\"id\":1}" {
+            debug!(
+                "[{}] - subscription response as expected: {}",
+                self.exchange_config.id, reply
+            );
+            Ok(())
+        } else {
+            Err(WsError::new(
+                format!(
+                    "Error subscribing to {}: response: {}",
+                    self.exchange_config.id, reply
+                )
+                .into(),
+            ))?
+        }
     }
 }
 

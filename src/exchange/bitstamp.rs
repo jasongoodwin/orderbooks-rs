@@ -7,7 +7,7 @@ use tokio::time::Instant;
 use serde::Deserialize;
 
 use crate::app_config::ExchangeConfig;
-use crate::exchange::{Exchange, OrderBookUpdate};
+use crate::exchange::{Exchange, OrderBookUpdate, WsError};
 use crate::orderbook::Level;
 use crate::result::Result;
 pub(crate) const EXCHANGE_KEY: &str = "bitstamp";
@@ -69,6 +69,19 @@ impl Exchange for Bitstamp {
 
     fn exchange_config(&self) -> &ExchangeConfig {
         &self.exchange_config
+    }
+
+    fn validate_subscription_reply(&self, bytes: Vec<u8>) -> Result<()> {
+        let reply = String::from_utf8(bytes)?;
+        if reply == "{\"event\":\"bts:subscription_succeeded\",\"channel\":\"order_book_{{pair}}\",\"data\":{}}"
+            .replace("{{pair}}", self.exchange_config.spot_pair.to_lowercase().as_str()) {
+            debug!("[{}] - subscription response as expected: {}", self.exchange_config.id, reply);
+            Ok(())
+        } else {
+            Err(WsError::new(
+                format!("Error subscribing to {}: response: {}", self.exchange_config.id, reply).into(),
+            ))?
+        }
     }
 }
 

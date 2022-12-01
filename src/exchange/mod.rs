@@ -56,6 +56,8 @@ trait Exchange {
         msg
     }
 
+    fn validate_subscription_reply(&self, bytes: Vec<u8>) -> Result<()>;
+
     fn empty_order_book_data(&self) -> OrderBookUpdate {
         OrderBookUpdate {
             ts: Instant::now(),
@@ -156,8 +158,7 @@ async fn connect_and_subscribe(
             )))?;
         }
         Some(Ok(msg)) => {
-            // FIXME need validate the subscription reply is as expected. implement in Exchange trait.
-            info!("got subscription reply {:?}", msg.to_string())
+            exchange.validate_subscription_reply(msg.into_data())?;
         }
         Some(e) => {
             e.map_err(|e| {
