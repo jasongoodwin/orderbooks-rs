@@ -36,9 +36,10 @@ You can adjust the log level with the RUST_LOG env variable. eg for debug:
 `RUST_LOG="info,orderbooks-rs=debug"`
 
 # Status
-There are a couple areas that could use some focus.
+(edit: these should be fixed)
+There are a couple areas that could use some focus. [fixed]
 - The exchange subscription reply isn't validated.
-- If messages aren't received after some period of time it may be worth stopping the exchange's endpoint + clearing the order book of that exchange's data. 
+- If messages aren't received after some period of time it may be worth stopping the exchange's endpoint + clearing the order book of that exchange's data. [fixed] 
 
 # Design Notes
 Design document has information on the decisions made, gotchas, release notes etc.
