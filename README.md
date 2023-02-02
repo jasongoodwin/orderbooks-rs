@@ -41,10 +41,6 @@ There are a couple areas that could use some focus. [fixed]
 - The exchange subscription reply isn't validated.
 - If messages aren't received after some period of time it may be worth stopping the exchange's endpoint + clearing the order book of that exchange's data. [fixed] 
 
-# Design Notes
-Design document has information on the decisions made, gotchas, release notes etc.
-See: https://docs.google.com/document/d/1psDVXU6FtZIRYa8W-z8RewljaKUG55_zFdTU5fNDGGQ/edit?usp=sharing
-
 # Ideas on Algo Trading w/ Order Book Data
 I've been working on a machine-learning DRL agent somewhat akin to AlphaGo for extracting profit from markets.
 It's been an arduous journey, and I do now how a profitable model out of sample, but I'm starting to consider how to improve the approach as over-fit remains a major barrier. I have numerous ideas, however I believe that it may simply be easier to move towards HFT approaches rather than kline data alone.
