@@ -40,7 +40,13 @@ impl OrderBookData {
             if a.price < b.price {
                 Ordering::Greater
             } else if a.price == b.price {
-                Ordering::Equal
+                if a.amount < b.amount {
+                    Ordering::Greater
+                } else if a.amount == b.amount {
+                    Ordering::Equal
+                } else {
+                    Ordering::Less
+                }
             } else {
                 Ordering::Less
             }
