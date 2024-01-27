@@ -40,6 +40,8 @@ You can adjust the log level with the RUST_LOG env variable. eg for debug:
 There are a couple areas that could use some focus. [fixed]
 - The exchange subscription reply isn't validated.
 - If messages aren't received after some period of time it may be worth stopping the exchange's endpoint + clearing the order book of that exchange's data. [fixed] 
+- There is probably some cloning, needs a clean-up.
+- There is likely other alpha like duration of time for a price level.
 
 # Ideas on Algo Trading w/ Order Book Data
 I've been working on a machine-learning DRL agent somewhat akin to AlphaGo for extracting profit from markets.
